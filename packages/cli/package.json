@@ -1,0 +1,28 @@
+{
+  "name": "@trailmap/cli",
+  "version": "0.1.0",
+  "description": "Auto-generate architecture maps from your codebase",
+  "bin": {
+    "trailmap": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/bin.ts src/index.ts --format esm --dts --banner.js '#!/usr/bin/env node'",
+    "dev": "tsup src/bin.ts --format esm --watch",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@trailmap/scanner": "*",
+    "chalk": "^5.4.1",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1"
+  },
+  "devDependencies": {
+    "@trailmap/typescript-config": "*",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.2"
+  }
+}

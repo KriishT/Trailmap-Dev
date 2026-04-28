@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "trailmap": {
+      "command": "npx",
+      "args": ["@trailmap/mcp"],
+      "env": {
+        "TRAILMAP_MODE": "local",
+        "TRAILMAP_SCAN_DIR": "${workspaceFolder}"
+      }
+    },
+    "trailmap-cloud": {
+      "command": "npx",
+      "args": ["@trailmap/mcp"],
+      "env": {
+        "TRAILMAP_MODE": "cloud",
+        "TRAILMAP_API_URL": "https://app.trailmap.dev",
+        "TRAILMAP_API_KEY": "your-api-key-here",
+        "TRAILMAP_REPO_ID": "your-repo-id-here"
+      }
+    }
+  }
+}
