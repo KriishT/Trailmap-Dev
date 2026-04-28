@@ -3,6 +3,7 @@
 import { X, ArrowRight, ArrowLeft } from "lucide-react";
 import type { DependencyGraph, GraphNode } from "@trailmap/scanner";
 import { motion } from "framer-motion";
+import { getNodeImpactMetrics } from "@/lib/graph-insights";
 
 const NODE_COLORS: Record<string, string> = {
   service:  "#E8754A",
@@ -24,6 +25,7 @@ export function NodeDetailPanel({
   const inbound = graph.edges.filter((e) => e.to === node.id);
   const outbound = graph.edges.filter((e) => e.from === node.id);
   const accentColor = NODE_COLORS[node.type] ?? "#E8754A";
+  const impact = getNodeImpactMetrics(graph, node.id);
 
   function nodeName(id: string) {
     return graph.nodes.find((n) => n.id === id)?.name ?? id;
@@ -37,6 +39,12 @@ export function NodeDetailPanel({
     { label: "Path", value: node.path || "/" },
   ];
 
+  function confidenceColor(confidence: string) {
+    if (confidence === "high") return "#27AE60";
+    if (confidence === "medium") return "#D4A017";
+    return "#C0392B";
+  }
+
   return (
     <motion.div
       initial={{ x: 20, opacity: 0 }}
@@ -44,7 +52,7 @@ export function NodeDetailPanel({
       exit={{ x: 20, opacity: 0 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       style={{
-        width: "272px",
+        width: "388px",
         flexShrink: 0,
         overflowY: "auto",
         borderLeft: "1px solid rgba(26,15,8,0.07)",
@@ -91,6 +99,37 @@ export function NodeDetailPanel({
             </div>
           ))}
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
+          <MetricCard label="Inbound" value={impact.inboundCount} />
+          <MetricCard label="Outbound" value={impact.outboundCount} />
+          <MetricCard label="Blast radius" value={impact.blastRadiusCount} />
+          <MetricCard label="Risk" value={impact.riskLevel.toUpperCase()} accent={confidenceColor(impact.riskLevel)} />
+        </div>
+
+        {node.evidence && node.evidence.length > 0 && (
+          <div>
+            <p style={{ fontSize: "9px", color: "rgba(26,15,8,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px", fontFamily: "var(--font-body)" }}>
+              Why this exists
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {node.evidence.map((item, index) => (
+                <div key={`${item.kind}-${item.source}-${index}`} style={{
+                  padding: "8px 9px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(26,15,8,0.08)",
+                  background: "rgba(26,15,8,0.02)",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center", marginBottom: "3px" }}>
+                    <span style={{ fontSize: "10px", color: "rgba(26,15,8,0.55)", fontWeight: 500, textTransform: "capitalize" }}>{item.kind.replace("-", " ")}</span>
+                    <code style={{ fontSize: "9px", color: "rgba(26,15,8,0.35)", fontFamily: "monospace" }}>{item.source}</code>
+                  </div>
+                  <p style={{ fontSize: "10px", color: "rgba(26,15,8,0.55)", lineHeight: 1.4 }}>{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tech stack badges */}
         {node.techStack && node.techStack.length > 0 && (
@@ -146,18 +185,43 @@ export function NodeDetailPanel({
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
               {outbound.map((e, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
-                  <span style={{ fontSize: "11px", color: "rgba(26,15,8,0.55)", fontFamily: "var(--font-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {nodeName(e.to)}
-                  </span>
-                  <span style={{
-                    fontSize: "9px", fontFamily: "var(--font-body)", flexShrink: 0, marginLeft: "8px",
-                    color: e.type === "database" ? "#7C6FE0" : e.type === "http" ? "#E8754A" : "rgba(26,15,8,0.3)",
-                    background: e.type === "database" ? "rgba(124,111,224,0.08)" : e.type === "http" ? "rgba(232,117,74,0.08)" : "rgba(26,15,8,0.04)",
-                    borderRadius: "4px", padding: "2px 6px",
-                  }}>
-                    {e.type}
-                  </span>
+                <div key={i} style={{ padding: "7px 0", borderTop: i === 0 ? "none" : "1px solid rgba(26,15,8,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "rgba(26,15,8,0.55)", fontFamily: "var(--font-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {nodeName(e.to)}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "8px" }}>
+                      <span style={{
+                        fontSize: "9px",
+                        fontFamily: "var(--font-body)",
+                        color: confidenceColor(e.confidence),
+                        background: `${confidenceColor(e.confidence)}12`,
+                        borderRadius: "4px",
+                        padding: "2px 6px",
+                        textTransform: "uppercase",
+                      }}>
+                        {e.confidence}
+                      </span>
+                      <span style={{
+                        fontSize: "9px", fontFamily: "var(--font-body)", flexShrink: 0,
+                        color: e.type === "database" ? "#7C6FE0" : e.type === "http" ? "#E8754A" : "rgba(26,15,8,0.3)",
+                        background: e.type === "database" ? "rgba(124,111,224,0.08)" : e.type === "http" ? "rgba(232,117,74,0.08)" : "rgba(26,15,8,0.04)",
+                        borderRadius: "4px", padding: "2px 6px",
+                      }}>
+                        {e.type}
+                      </span>
+                    </div>
+                  </div>
+                  {e.evidence?.[0] && (
+                    <p style={{ fontSize: "10px", color: "rgba(26,15,8,0.4)", lineHeight: 1.4, marginTop: "4px" }}>
+                      {e.evidence[0].detail}
+                    </p>
+                  )}
+                  {e.evidence?.[0] && (
+                    <code style={{ fontSize: "9px", color: "rgba(26,15,8,0.28)", fontFamily: "monospace" }}>
+                      {e.evidence[0].source}
+                    </code>
+                  )}
                 </div>
               ))}
             </div>
@@ -172,18 +236,43 @@ export function NodeDetailPanel({
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
               {inbound.map((e, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
-                  <span style={{ fontSize: "11px", color: "rgba(26,15,8,0.55)", fontFamily: "var(--font-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {nodeName(e.from)}
-                  </span>
-                  <span style={{
-                    fontSize: "9px", fontFamily: "var(--font-body)", flexShrink: 0, marginLeft: "8px",
-                    color: e.type === "database" ? "#7C6FE0" : e.type === "http" ? "#E8754A" : "rgba(26,15,8,0.3)",
-                    background: e.type === "database" ? "rgba(124,111,224,0.08)" : e.type === "http" ? "rgba(232,117,74,0.08)" : "rgba(26,15,8,0.04)",
-                    borderRadius: "4px", padding: "2px 6px",
-                  }}>
-                    {e.type}
-                  </span>
+                <div key={i} style={{ padding: "7px 0", borderTop: i === 0 ? "none" : "1px solid rgba(26,15,8,0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "rgba(26,15,8,0.55)", fontFamily: "var(--font-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {nodeName(e.from)}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "8px" }}>
+                      <span style={{
+                        fontSize: "9px",
+                        fontFamily: "var(--font-body)",
+                        color: confidenceColor(e.confidence),
+                        background: `${confidenceColor(e.confidence)}12`,
+                        borderRadius: "4px",
+                        padding: "2px 6px",
+                        textTransform: "uppercase",
+                      }}>
+                        {e.confidence}
+                      </span>
+                      <span style={{
+                        fontSize: "9px", fontFamily: "var(--font-body)", flexShrink: 0,
+                        color: e.type === "database" ? "#7C6FE0" : e.type === "http" ? "#E8754A" : "rgba(26,15,8,0.3)",
+                        background: e.type === "database" ? "rgba(124,111,224,0.08)" : e.type === "http" ? "rgba(232,117,74,0.08)" : "rgba(26,15,8,0.04)",
+                        borderRadius: "4px", padding: "2px 6px",
+                      }}>
+                        {e.type}
+                      </span>
+                    </div>
+                  </div>
+                  {e.evidence?.[0] && (
+                    <p style={{ fontSize: "10px", color: "rgba(26,15,8,0.4)", lineHeight: 1.4, marginTop: "4px" }}>
+                      {e.evidence[0].detail}
+                    </p>
+                  )}
+                  {e.evidence?.[0] && (
+                    <code style={{ fontSize: "9px", color: "rgba(26,15,8,0.28)", fontFamily: "monospace" }}>
+                      {e.evidence[0].source}
+                    </code>
+                  )}
                 </div>
               ))}
             </div>
@@ -195,5 +284,30 @@ export function NodeDetailPanel({
         )}
       </div>
     </motion.div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  accent?: string;
+}) {
+  return (
+    <div style={{
+      borderRadius: "8px",
+      border: "1px solid rgba(26,15,8,0.08)",
+      background: "rgba(26,15,8,0.02)",
+      padding: "9px 10px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "4px",
+    }}>
+      <span style={{ fontSize: "9px", color: "rgba(26,15,8,0.32)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+      <span style={{ fontSize: "0.86rem", color: accent ?? "#1A0F08", fontWeight: 600 }}>{value}</span>
+    </div>
   );
 }

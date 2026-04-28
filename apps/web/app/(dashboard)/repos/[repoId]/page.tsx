@@ -1,8 +1,8 @@
 ﻿import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { MapView } from "@/components/map/map-view";
 import { ShareButton } from "@/components/map/share-button";
+import { RepoWorkspace } from "@/components/map/repo-workspace";
 import { ArrowLeft } from "lucide-react";
 
 export default async function RepoMapPage({ params }: { params: Promise<{ repoId: string }> }) {
@@ -40,7 +40,7 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
       {/* Toolbar */}
       <div style={{
         padding: "0 20px", height: "44px",
@@ -66,9 +66,7 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex" }}>
-        <MapView graph={snapshot.raw_json as any} />
-      </div>
+      <RepoWorkspace graph={snapshot.raw_json as any} scannedAt={snapshot.scanned_at} />
     </div>
   );
 }

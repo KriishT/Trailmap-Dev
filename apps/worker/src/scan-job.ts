@@ -1,10 +1,10 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as tmp from "tmp";
-import simpleGit from "simple-git";
+import { simpleGit } from "simple-git";
 import { scan } from "@trailmap/scanner";
 import { getDb } from "./db.js";
-import { getOctokit } from "./github-client.js";
+import { getInstallationOctokit } from "./github-client.js";
 
 export interface ScanJobData {
   scanLogId: string;
@@ -39,7 +39,7 @@ export async function runScanJob(data: ScanJobData): Promise<void> {
 
     if (!org?.github_installation_id) throw new Error("No GitHub installation found");
 
-    const octokit = getOctokit(org.github_installation_id);
+    const octokit = getInstallationOctokit(org.github_installation_id);
 
     // Get latest commit SHA
     const [owner, repoName] = repo.full_name.split("/");

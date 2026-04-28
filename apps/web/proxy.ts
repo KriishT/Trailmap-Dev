@@ -1,11 +1,17 @@
-﻿import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/sign-in", "/sign-up", "/auth/callback", "/map/"];
 
+type CookieMutation = {
+  name: string;
+  value: string;
+  options?: Record<string, unknown>;
+};
+
 function isPublic(pathname: string) {
   return (
-    PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r)) ||
+    PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route)) ||
     pathname.startsWith("/api/webhooks/")
   );
 }
@@ -19,18 +25,20 @@ export async function proxy(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: CookieMutation[]) => {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options as any)
           );
         },
       },
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user && !isPublic(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
@@ -50,4 +58,3 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
-

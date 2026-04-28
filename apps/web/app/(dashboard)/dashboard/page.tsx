@@ -34,12 +34,12 @@ export default async function DashboardPage() {
             Repositories
           </h1>
           <p className="font-body" style={{ fontSize: "0.85rem", color: "rgba(26,15,8,0.4)", marginTop: "4px" }}>
-            {repos?.length ?? 0} connected · Auto-scanning on push
+            {repos?.length ?? 0} selected · Only chosen repositories appear here
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <SyncReposButton />
-          <ConnectGitHubButton label="Add repos" />
+          <SyncReposButton label="Choose repos" />
+          <ConnectGitHubButton label="Install GitHub App" />
         </div>
       </div>
 
@@ -66,11 +66,11 @@ export default async function DashboardPage() {
             No maps generated yet
           </h2>
           <p className="font-body" style={{ fontSize: "0.875rem", color: "rgba(26,15,8,0.4)", marginBottom: "24px", maxWidth: "320px", margin: "0 auto 24px", lineHeight: 1.6, fontWeight: 300 }}>
-            Install the GitHub App then click <strong>Sync repos</strong> to import your repositories.
+            Install the GitHub App, then choose which repositories belong in this workspace.
           </p>
           <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-            <SyncReposButton />
-            <ConnectGitHubButton />
+            <SyncReposButton label="Choose repos" />
+            <ConnectGitHubButton label="Install GitHub App" />
           </div>
         </div>
       )}

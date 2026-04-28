@@ -2,10 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { glob } from "glob";
 import {
+  Confidence,
   DependencyGraph,
   GraphEdge,
+  GraphEvidence,
   GraphNode,
-  Language,
   ScanOptions,
 } from "./types.js";
 import { detectLanguage, detectLanguageFromFile } from "./detect-language.js";
@@ -17,7 +18,7 @@ import {
   parseOpenApiSpec,
 } from "./parse-infra.js";
 import { parseCiCdFile } from "./parse-cicd.js";
-import { parseConnections, classifyPackage } from "./parse-connections.js";
+import { classifyPackage, parseConnections } from "./parse-connections.js";
 
 const DEFAULT_EXCLUDE = [
   "**/node_modules/**",
@@ -42,7 +43,6 @@ const SCANNABLE_EXTENSIONS = new Set([
   ".env", ".env.local", ".env.production", ".env.development",
 ]);
 
-// Framework detection from package.json dependencies
 const FRAMEWORK_HINTS: { key: string; framework: string }[] = [
   { key: "next", framework: "nextjs" },
   { key: "nuxt", framework: "nuxt" },
@@ -77,7 +77,6 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
   const languageCounts: Record<string, number> = {};
   let totalFiles = 0;
 
-  // --- Step 1: Find service directories
   const serviceRoots = await findServiceRoots(absRoot, excludePatterns);
 
   for (const serviceDir of serviceRoots) {
@@ -85,18 +84,50 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
     const relPath = path.relative(absRoot, serviceDir);
     const id = relPath.replace(/[/\\]/g, "-") || "root";
     const name = path.basename(serviceDir) === "." ? path.basename(absRoot) : path.basename(serviceDir);
+    const evidence: GraphEvidence[] = [];
 
-    // OpenAPI spec endpoints
+    const manifest = findServiceManifest(serviceDir);
+    if (manifest) {
+      evidence.push({
+        kind: "manifest",
+        source: path.relative(absRoot, manifest),
+        detail: "Service root discovered from project manifest",
+      });
+    }
+
     const openApiFiles = await glob("**/{openapi,swagger}.{yaml,yml,json}", {
       cwd: serviceDir,
       ignore: excludePatterns,
       absolute: true,
     });
     const endpoints: string[] = [];
-    for (const f of openApiFiles) endpoints.push(...parseOpenApiSpec(f));
+    for (const file of openApiFiles) {
+      endpoints.push(...parseOpenApiSpec(file));
+      evidence.push({
+        kind: "openapi",
+        source: path.relative(absRoot, file),
+        detail: "OpenAPI spec contributed endpoint metadata",
+      });
+    }
 
     const port = await detectPort(serviceDir);
     const { framework, techStack } = detectFramework(serviceDir);
+
+    if (port) {
+      evidence.push({
+        kind: "port",
+        source: relPath || ".",
+        detail: `Detected service port ${port}`,
+      });
+    }
+
+    if (framework) {
+      evidence.push({
+        kind: "framework",
+        source: relPath || ".",
+        detail: `Detected framework ${framework}`,
+      });
+    }
 
     nodes.set(id, {
       id,
@@ -108,12 +139,12 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
       path: relPath || ".",
       framework,
       techStack,
+      evidence,
     });
 
     languageCounts[lang] = (languageCounts[lang] ?? 0) + 1;
   }
 
-  // --- Step 2: Parse docker-compose for services and dependencies
   const composeFiles = await glob("**/docker-compose.{yml,yaml}", {
     cwd: absRoot,
     ignore: excludePatterns,
@@ -134,6 +165,13 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
           port: svc.port ?? null,
           endpoints: [],
           path: path.relative(absRoot, path.dirname(composeFile)),
+          evidence: [
+            {
+              kind: "compose",
+              source: path.relative(absRoot, composeFile),
+              detail: `Discovered from docker-compose service "${svc.name}"`,
+            },
+          ],
         });
       }
 
@@ -141,13 +179,24 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
         const fromId = findNodeId(nodes, svc.name);
         const toId = findNodeId(nodes, dep);
         if (fromId && toId) {
-          edges.push({ from: fromId, to: toId, type: "http", confidence: "high" });
+          addEdge(edges, {
+            from: fromId,
+            to: toId,
+            type: "http",
+            confidence: "high",
+            evidence: [
+              {
+                kind: "compose",
+                source: path.relative(absRoot, composeFile),
+                detail: `depends_on links "${svc.name}" to "${dep}"`,
+              },
+            ],
+          });
         }
       }
     }
   }
 
-  // --- Step 3: Parse Kubernetes manifests
   const yamlFiles = await glob("**/*.{yaml,yml}", {
     cwd: absRoot,
     ignore: [...excludePatterns, "**/docker-compose*"],
@@ -155,26 +204,32 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
   });
 
   for (const yamlFile of yamlFiles) {
-    if (isKubernetesManifest(yamlFile)) {
-      const services = parseKubernetesManifest(yamlFile);
-      for (const svc of services) {
-        const id = `k8s-${svc.name}`;
-        if (!nodes.has(svc.name) && !nodes.has(id)) {
-          nodes.set(id, {
-            id,
-            name: svc.name,
-            type: "service",
-            language: "unknown",
-            port: svc.port ?? null,
-            endpoints: [],
-            path: path.relative(absRoot, path.dirname(yamlFile)),
-          });
-        }
+    if (!isKubernetesManifest(yamlFile)) continue;
+
+    const services = parseKubernetesManifest(yamlFile);
+    for (const svc of services) {
+      const id = `k8s-${svc.name}`;
+      if (!nodes.has(svc.name) && !nodes.has(id)) {
+        nodes.set(id, {
+          id,
+          name: svc.name,
+          type: "service",
+          language: "unknown",
+          port: svc.port ?? null,
+          endpoints: [],
+          path: path.relative(absRoot, path.dirname(yamlFile)),
+          evidence: [
+            {
+              kind: "kubernetes",
+              source: path.relative(absRoot, yamlFile),
+              detail: `Discovered from Kubernetes manifest "${svc.name}"`,
+            },
+          ],
+        });
       }
     }
   }
 
-  // --- Step 4: Scan source files for imports, HTTP calls, and env-var connections
   const sourceFiles = await glob("**/*", {
     cwd: absRoot,
     ignore: excludePatterns,
@@ -182,7 +237,6 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
     nodir: true,
   });
 
-  // Build a port → nodeId lookup for localhost references
   const portToNodeId = new Map<string, string>();
   for (const [id, node] of nodes) {
     if (node.port) portToNodeId.set(String(node.port), id);
@@ -201,22 +255,29 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
       const lang = detectLanguageFromFile(file);
       const fileServiceId = findServiceForFile(file, serviceRoots, absRoot);
 
-      // --- 4a. Package imports → detect cross-service and DB/SaaS nodes
       if (SOURCE_EXTENSIONS.has(ext)) {
         const imports = parseImports(content, lang);
         for (const imp of imports) {
           if (!imp.isExternal || imp.isRelative) continue;
 
-          // Check if matches a known sibling service
           const targetId = findNodeByPackageName(nodes, imp.source);
           if (targetId && fileServiceId && targetId !== fileServiceId) {
-            if (!edgeExists(edges, fileServiceId, targetId)) {
-              edges.push({ from: fileServiceId, to: targetId, type: "import", confidence: "medium" });
-            }
+            addEdge(edges, {
+              from: fileServiceId,
+              to: targetId,
+              type: "import",
+              confidence: "medium",
+              evidence: [
+                {
+                  kind: "import",
+                  source: path.relative(absRoot, file),
+                  detail: `Imports package "${imp.source}"`,
+                },
+              ],
+            });
             continue;
           }
 
-          // Classify as DB or SaaS package
           const { kind, name } = classifyPackage(imp.source);
           if (kind && name && fileServiceId) {
             const nodeId = `${kind}-${name}`;
@@ -229,16 +290,32 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
                 port: null,
                 endpoints: [],
                 path: "",
+                evidence: [
+                  {
+                    kind: "package-classification",
+                    source: path.relative(absRoot, file),
+                    detail: `Package "${imp.source}" classified as ${kind} "${name}"`,
+                  },
+                ],
               });
             }
-            const edgeType = kind === "database" ? "database" : "http";
-            if (!edgeExists(edges, fileServiceId, nodeId)) {
-              edges.push({ from: fileServiceId, to: nodeId, type: edgeType, confidence: "high" });
-            }
+
+            addEdge(edges, {
+              from: fileServiceId,
+              to: nodeId,
+              type: kind === "database" ? "database" : "http",
+              confidence: "high",
+              evidence: [
+                {
+                  kind: "package-classification",
+                  source: path.relative(absRoot, file),
+                  detail: `Package "${imp.source}" implies dependency on ${name}`,
+                },
+              ],
+            });
             continue;
           }
 
-          // Generic library node (if includeLibraries)
           if (includeLibraries && !targetId) {
             const libId = `lib-${imp.source.replace(/[@/]/g, "-")}`;
             if (!nodes.has(libId)) {
@@ -250,32 +327,59 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
                 port: null,
                 endpoints: [],
                 path: "",
+                evidence: [
+                  {
+                    kind: "import",
+                    source: path.relative(absRoot, file),
+                    detail: `External library "${imp.source}"`,
+                  },
+                ],
               });
             }
-            if (fileServiceId && !edgeExists(edges, fileServiceId, libId)) {
-              edges.push({ from: fileServiceId, to: libId, type: "import", confidence: "high" });
+
+            if (fileServiceId) {
+              addEdge(edges, {
+                from: fileServiceId,
+                to: libId,
+                type: "import",
+                confidence: "high",
+                evidence: [
+                  {
+                    kind: "import",
+                    source: path.relative(absRoot, file),
+                    detail: `Imports external library "${imp.source}"`,
+                  },
+                ],
+              });
             }
           }
         }
       }
 
-      // --- 4b. Connection detection (HTTP calls, env vars)
       const connections = parseConnections(content, file);
       for (const conn of connections) {
         if (!fileServiceId) continue;
 
         if (conn.kind === "http") {
-          // localhost:PORT → match to a known service
           const portMatch = conn.target.match(/^localhost:(\d+)$/);
           if (portMatch) {
             const targetId = portToNodeId.get(portMatch[1] ?? "");
             if (targetId && targetId !== fileServiceId) {
-              if (!edgeExists(edges, fileServiceId, targetId)) {
-                edges.push({ from: fileServiceId, to: targetId, type: "http", confidence: "high" });
-              }
+              addEdge(edges, {
+                from: fileServiceId,
+                to: targetId,
+                type: "http",
+                confidence: "high",
+                evidence: [
+                  {
+                    kind: "http-call",
+                    source: path.relative(absRoot, file),
+                    detail: conn.detail,
+                  },
+                ],
+              });
             }
           } else if (conn.target !== "env-url" && !conn.target.startsWith("env-")) {
-            // External hostname — create/link an external node
             const nodeId = `ext-${conn.target.replace(/[.:]/g, "-")}`;
             if (!nodes.has(nodeId)) {
               nodes.set(nodeId, {
@@ -286,11 +390,29 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
                 port: null,
                 endpoints: [],
                 path: "",
+                evidence: [
+                  {
+                    kind: "http-call",
+                    source: path.relative(absRoot, file),
+                    detail: `References external host "${conn.target}"`,
+                  },
+                ],
               });
             }
-            if (!edgeExists(edges, fileServiceId, nodeId)) {
-              edges.push({ from: fileServiceId, to: nodeId, type: "http", confidence: conn.confidence });
-            }
+
+            addEdge(edges, {
+              from: fileServiceId,
+              to: nodeId,
+              type: "http",
+              confidence: conn.confidence,
+              evidence: [
+                {
+                  kind: "http-call",
+                  source: path.relative(absRoot, file),
+                  detail: conn.detail,
+                },
+              ],
+            });
           }
         }
 
@@ -305,11 +427,29 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
               port: null,
               endpoints: [],
               path: "",
+              evidence: [
+                {
+                  kind: "env",
+                  source: path.relative(absRoot, file),
+                  detail: `Database dependency "${conn.target}" inferred from environment or code`,
+                },
+              ],
             });
           }
-          if (!edgeExists(edges, fileServiceId, nodeId)) {
-            edges.push({ from: fileServiceId, to: nodeId, type: "database", confidence: conn.confidence });
-          }
+
+          addEdge(edges, {
+            from: fileServiceId,
+            to: nodeId,
+            type: "database",
+            confidence: conn.confidence,
+            evidence: [
+              {
+                kind: "env",
+                source: path.relative(absRoot, file),
+                detail: conn.detail,
+              },
+            ],
+          });
         }
 
         if (conn.kind === "queue") {
@@ -323,19 +463,36 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
               port: null,
               endpoints: [],
               path: "",
+              evidence: [
+                {
+                  kind: "env",
+                  source: path.relative(absRoot, file),
+                  detail: `Queue dependency "${conn.target}" inferred from environment or code`,
+                },
+              ],
             });
           }
-          if (!edgeExists(edges, fileServiceId, nodeId)) {
-            edges.push({ from: fileServiceId, to: nodeId, type: "queue", confidence: conn.confidence });
-          }
+
+          addEdge(edges, {
+            from: fileServiceId,
+            to: nodeId,
+            type: "queue",
+            confidence: conn.confidence,
+            evidence: [
+              {
+                kind: "env",
+                source: path.relative(absRoot, file),
+                detail: conn.detail,
+              },
+            ],
+          });
         }
       }
     } catch {
-      // skip unreadable files
+      // Skip unreadable files
     }
   }
 
-  // --- Step 5: Parse CI/CD for additional service signals
   const ciFiles = await glob(
     "**/{.github/workflows/*.yml,.circleci/config.yml,Jenkinsfile}",
     { cwd: absRoot, ignore: excludePatterns, absolute: true }
@@ -344,7 +501,6 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
     parseCiCdFile(ciFile);
   }
 
-  // Deduplicate: prefer "database-X" over "ext-X" when both exist for same name
   consolidateNodes(nodes, edges);
 
   return {
@@ -372,15 +528,14 @@ function detectFramework(serviceDir: string): { framework: string | undefined; t
       ...pkg.peerDependencies,
     };
 
-    for (const { key, framework: fw } of FRAMEWORK_HINTS) {
+    for (const { key, framework: hintedFramework } of FRAMEWORK_HINTS) {
       if (allDeps[key] !== undefined) {
-        if (!framework) framework = fw;
+        if (!framework) framework = hintedFramework;
         break;
       }
     }
 
-    // Build techStack from well-known packages
-    const STACK_PACKAGES: Record<string, string> = {
+    const stackPackages: Record<string, string> = {
       "tailwindcss": "tailwind",
       "@tailwindcss/vite": "tailwind",
       "prisma": "prisma",
@@ -406,40 +561,42 @@ function detectFramework(serviceDir: string): { framework: string | undefined; t
       "@clerk/nextjs": "clerk",
     };
 
-    for (const [pkg, label] of Object.entries(STACK_PACKAGES)) {
+    for (const [pkg, label] of Object.entries(stackPackages)) {
       if (allDeps[pkg] !== undefined && !techStack.includes(label)) {
         techStack.push(label);
       }
     }
-  } catch {}
+  } catch {
+    // Ignore malformed package metadata
+  }
 
-  // Python: check requirements.txt or pyproject.toml
   try {
-    const reqPath = path.join(serviceDir, "requirements.txt");
-    const req = fs.readFileSync(reqPath, "utf-8");
+    const req = fs.readFileSync(path.join(serviceDir, "requirements.txt"), "utf-8");
     if (/^fastapi/im.test(req)) framework = "fastapi";
     else if (/^django/im.test(req)) framework = "django";
     else if (/^flask/im.test(req)) framework = "flask";
-  } catch {}
+  } catch {
+    // Ignore missing Python manifests
+  }
 
-  // Go: check go.mod
   try {
     const goMod = fs.readFileSync(path.join(serviceDir, "go.mod"), "utf-8");
     if (/gin-gonic\/gin/.test(goMod)) framework = "gin";
     else if (/gofiber\/fiber/.test(goMod)) framework = "fiber";
     else if (/labstack\/echo/.test(goMod)) framework = "echo";
-  } catch {}
+  } catch {
+    // Ignore missing Go manifests
+  }
 
   return { framework, techStack };
 }
 
 async function findServiceRoots(rootDir: string, ignore: string[]): Promise<string[]> {
-  const MANIFEST_FILES = [
+  const manifestFiles = [
     "package.json", "go.mod", "pom.xml", "build.gradle",
     "requirements.txt", "pyproject.toml", "Gemfile",
   ];
 
-  // Check for monorepo workspace
   const rootPkgPath = path.join(rootDir, "package.json");
   let workspaceDirs: string[] = [];
   try {
@@ -450,42 +607,62 @@ async function findServiceRoots(rootDir: string, ignore: string[]): Promise<stri
 
     for (const pattern of workspaces) {
       const matched = await glob(pattern, { cwd: rootDir, absolute: true });
-      for (const m of matched) {
-        if (fs.existsSync(path.join(m, "package.json"))) {
-          workspaceDirs.push(m);
+      for (const match of matched) {
+        if (fs.existsSync(path.join(match, "package.json"))) {
+          workspaceDirs.push(match);
         }
       }
     }
-  } catch {}
+  } catch {
+    // Ignore malformed workspace config
+  }
 
   if (workspaceDirs.length > 0) return workspaceDirs;
 
-  // Find all manifest files and keep leaf-level roots
   const roots = new Set<string>();
-  for (const manifest of MANIFEST_FILES) {
+  for (const manifest of manifestFiles) {
     const files = await glob(`**/${manifest}`, {
       cwd: rootDir,
       ignore,
       absolute: true,
     });
-    for (const f of files) roots.add(path.dirname(f));
+    for (const file of files) roots.add(path.dirname(file));
   }
 
   if (roots.size === 0) return [rootDir];
 
   const allRoots = Array.from(roots).sort((a, b) => a.length - b.length);
   const hasChildren = new Set<string>();
-  for (const r of allRoots) {
+  for (const root of allRoots) {
     for (const other of allRoots) {
-      if (other !== r && other.startsWith(r + path.sep)) {
-        hasChildren.add(r);
+      if (other !== root && other.startsWith(root + path.sep)) {
+        hasChildren.add(root);
         break;
       }
     }
   }
 
-  const leafRoots = allRoots.filter(r => !hasChildren.has(r));
+  const leafRoots = allRoots.filter((root) => !hasChildren.has(root));
   return leafRoots.length > 0 ? leafRoots : [rootDir];
+}
+
+function findServiceManifest(serviceDir: string): string | null {
+  const candidates = [
+    "package.json",
+    "go.mod",
+    "pom.xml",
+    "build.gradle",
+    "requirements.txt",
+    "pyproject.toml",
+    "Gemfile",
+  ];
+
+  for (const file of candidates) {
+    const candidate = path.join(serviceDir, file);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return null;
 }
 
 async function detectPort(serviceDir: string): Promise<number | null> {
@@ -495,14 +672,18 @@ async function detectPort(serviceDir: string): Promise<number | null> {
     const start: string = pkg?.scripts?.start ?? pkg?.scripts?.dev ?? "";
     const portMatch = start.match(/(?:PORT=|--port\s+|:\s*)(\d{4,5})/);
     if (portMatch?.[1]) return parseInt(portMatch[1], 10);
-  } catch {}
+  } catch {
+    // Ignore malformed package metadata
+  }
 
   const envPath = path.join(serviceDir, ".env");
   try {
     const env = fs.readFileSync(envPath, "utf-8");
     const portMatch = env.match(/^PORT=(\d+)/m);
     if (portMatch?.[1]) return parseInt(portMatch[1], 10);
-  } catch {}
+  } catch {
+    // Ignore missing env files
+  }
 
   return null;
 }
@@ -543,45 +724,140 @@ function findNodeByPackageName(nodes: Map<string, GraphNode>, packageName: strin
   return null;
 }
 
-function edgeExists(edges: GraphEdge[], from: string, to: string): boolean {
-  return edges.some((e) => e.from === from && e.to === to);
+function addEdge(edges: GraphEdge[], edge: GraphEdge) {
+  const existing = edges.find(
+    (candidate) =>
+      candidate.from === edge.from &&
+      candidate.to === edge.to &&
+      candidate.type === edge.type
+  );
+
+  if (!existing) {
+    edges.push(edge);
+    return;
+  }
+
+  if (confidenceRank(edge.confidence) > confidenceRank(existing.confidence)) {
+    existing.confidence = edge.confidence;
+  }
+
+  existing.evidence = mergeEvidence(existing.evidence, edge.evidence);
+}
+
+function confidenceRank(confidence: Confidence): number {
+  if (confidence === "high") return 3;
+  if (confidence === "medium") return 2;
+  return 1;
 }
 
 function deduplicateEdges(edges: GraphEdge[]): GraphEdge[] {
   const seen = new Set<string>();
-  return edges.filter((e) => {
-    const key = `${e.from}→${e.to}→${e.type}`;
+  return edges.filter((edge) => {
+    const key = `${edge.from}->${edge.to}->${edge.type}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
 
-function isDbImage(image: string): boolean {
-  const dbKeywords = ["postgres", "mysql", "mongodb", "redis", "elasticsearch", "cassandra", "sqlite"];
-  return dbKeywords.some((kw) => image.toLowerCase().includes(kw));
+function mergeEvidence(
+  existing: GraphEvidence[] | undefined,
+  incoming: GraphEvidence[] | undefined
+): GraphEvidence[] {
+  const merged = [...(existing ?? [])];
+
+  for (const item of incoming ?? []) {
+    if (!merged.some((entry) => entry.kind === item.kind && entry.source === item.source && entry.detail === item.detail)) {
+      merged.push(item);
+    }
+  }
+
+  return merged;
 }
 
-// If we have both "database-X" and "ext-X" for the same underlying service, keep database-X
+function isDbImage(image: string): boolean {
+  const dbKeywords = ["postgres", "mysql", "mongodb", "redis", "elasticsearch", "cassandra", "sqlite"];
+  return dbKeywords.some((keyword) => image.toLowerCase().includes(keyword));
+}
+
 function consolidateNodes(nodes: Map<string, GraphNode>, edges: GraphEdge[]) {
-  const dbNodes = new Map<string, string>(); // name → id
+  mergeDuplicateNamedNodes(nodes, edges);
+
+  const canonicalNodes = new Map<string, string>();
   for (const [id, node] of nodes) {
     if (node.type === "database" || node.type === "saas") {
-      dbNodes.set(node.name, id);
+      canonicalNodes.set(node.name, id);
     }
   }
 
   for (const [id, node] of [...nodes.entries()]) {
-    if (node.type === "external") {
-      const canonical = dbNodes.get(node.name);
-      if (canonical && canonical !== id) {
-        // Redirect edges
-        for (const edge of edges) {
-          if (edge.from === id) edge.from = canonical;
-          if (edge.to === id) edge.to = canonical;
-        }
-        nodes.delete(id);
+    if (node.type !== "external") continue;
+
+    const canonical = canonicalNodes.get(node.name);
+    if (!canonical || canonical === id) continue;
+
+    for (const edge of edges) {
+      if (edge.from === id) edge.from = canonical;
+      if (edge.to === id) edge.to = canonical;
+    }
+
+    const canonicalNode = nodes.get(canonical);
+    if (canonicalNode) {
+      canonicalNode.evidence = mergeEvidence(canonicalNode.evidence, node.evidence);
+    }
+
+    nodes.delete(id);
+  }
+}
+
+function mergeDuplicateNamedNodes(nodes: Map<string, GraphNode>, edges: GraphEdge[]) {
+  const groups = new Map<string, Array<[string, GraphNode]>>();
+
+  for (const entry of nodes.entries()) {
+    const [id, node] = entry;
+    const key = `${node.type}:${node.name.toLowerCase()}`;
+    const group = groups.get(key) ?? [];
+    group.push([id, node]);
+    groups.set(key, group);
+  }
+
+  for (const [, group] of groups) {
+    if (group.length < 2) continue;
+
+    const canonical = [...group].sort((a, b) => nodePriority(b[1]) - nodePriority(a[1]))[0];
+    if (!canonical) continue;
+    const [canonicalId, canonicalNode] = canonical;
+
+    for (const [id, node] of group) {
+      if (id === canonicalId) continue;
+
+      if (!canonicalNode.port && node.port) canonicalNode.port = node.port;
+      if ((!canonicalNode.path || canonicalNode.path === ".") && node.path) canonicalNode.path = node.path;
+      if (!canonicalNode.framework && node.framework) canonicalNode.framework = node.framework;
+      canonicalNode.endpoints = uniqueStrings([...(canonicalNode.endpoints ?? []), ...(node.endpoints ?? [])]);
+      canonicalNode.techStack = uniqueStrings([...(canonicalNode.techStack ?? []), ...(node.techStack ?? [])]);
+      canonicalNode.evidence = mergeEvidence(canonicalNode.evidence, node.evidence);
+
+      for (const edge of edges) {
+        if (edge.from === id) edge.from = canonicalId;
+        if (edge.to === id) edge.to = canonicalId;
       }
+
+      nodes.delete(id);
     }
   }
+}
+
+function nodePriority(node: GraphNode): number {
+  let score = 0;
+  if (node.path && node.path !== ".") score += 4;
+  if (node.framework) score += 3;
+  if (node.port) score += 2;
+  if (node.endpoints.length > 0) score += 2;
+  score += (node.evidence?.length ?? 0) * 0.1;
+  return score;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }

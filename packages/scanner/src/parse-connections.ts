@@ -1,12 +1,12 @@
 // Detects outbound HTTP calls, database connections, and env-var-based service references
 
 export interface DetectedConnection {
-  target: string;       // URL, env var name, or service hint
+  target: string;
   kind: "http" | "database" | "queue" | "env-ref";
   confidence: "high" | "medium" | "low";
+  detail: string;
 }
 
-// Known database env var patterns → canonical type
 const DB_ENV_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /DATABASE_URL|POSTGRES(?:_URL|_DSN|QL_URL)?/i, name: "postgres" },
   { pattern: /MYSQL(?:_URL|_DSN)?/i, name: "mysql" },
@@ -20,7 +20,6 @@ const DB_ENV_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /PLANETSCALE_(?:URL|DSN)/i, name: "mysql" },
 ];
 
-// Known service env var hints
 const SERVICE_ENV_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /STRIPE_(?:SECRET|PUBLIC|KEY|API)/i, name: "stripe" },
   { pattern: /SENDGRID_API_KEY|SENDGRID_URL/i, name: "sendgrid" },
@@ -40,7 +39,6 @@ const SERVICE_ENV_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /MIXPANEL_TOKEN/i, name: "mixpanel" },
 ];
 
-// HTTP call patterns — fetch, axios, got, request, http.get
 const HTTP_CALL_PATTERNS = [
   /fetch\s*\(\s*[`'"](https?:\/\/[^`'"]+)[`'"]/g,
   /axios\s*\.\s*(?:get|post|put|patch|delete|request)\s*\(\s*[`'"](https?:\/\/[^`'"]+)[`'"]/g,
@@ -48,69 +46,98 @@ const HTTP_CALL_PATTERNS = [
   /got\s*\(\s*[`'"](https?:\/\/[^`'"]+)[`'"]/g,
   /(?:http|https)\.(?:get|post|request)\s*\(\s*[`'"](https?:\/\/[^`'"]+)[`'"]/g,
   /new\s+URL\s*\(\s*[`'"](https?:\/\/[^`'"]+)[`'"]/g,
-  // env-var interpolated URLs
   /fetch\s*\(\s*`[^`]*\$\{[^}]*(?:URL|HOST|ENDPOINT|BASE)[^}]*\}[^`]*`/g,
   /fetch\s*\(\s*(?:process\.env\.|import\.meta\.env\.)\w+/g,
 ];
 
-// Internal service reference env var patterns
 const INTERNAL_URL_ENV = /(?:_URL|_HOST|_ENDPOINT|_BASE_URL|_SERVICE_URL)\s*=/i;
 
 export function parseConnections(content: string, filePath: string): DetectedConnection[] {
   const results: DetectedConnection[] = [];
   const seen = new Set<string>();
 
-  function add(c: DetectedConnection) {
-    const key = `${c.kind}:${c.target}`;
-    if (!seen.has(key)) { seen.add(key); results.push(c); }
+  function add(connection: DetectedConnection) {
+    const key = `${connection.kind}:${connection.target}:${connection.detail}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push(connection);
+    }
   }
 
-  // 1. HTTP calls with literal URLs
   for (const pattern of HTTP_CALL_PATTERNS) {
     const re = new RegExp(pattern.source, pattern.flags);
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(content)) !== null) {
-      if (m[1]) {
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(content)) !== null) {
+      if (match[1]) {
         try {
-          const url = new URL(m[1]);
+          const url = new URL(match[1]);
           const host = url.hostname;
-          // Skip localhost/127.0.0.1 — those are internal calls we handle via port matching
           if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
-            add({ target: `localhost${url.port ? `:${url.port}` : ""}`, kind: "http", confidence: "high" });
+            add({
+              target: `localhost${url.port ? `:${url.port}` : ""}`,
+              kind: "http",
+              confidence: "high",
+              detail: `Literal HTTP call to ${url.origin}`,
+            });
           } else if (!host.includes("example") && !host.includes("placeholder")) {
-            add({ target: host, kind: "http", confidence: "high" });
+            add({
+              target: host,
+              kind: "http",
+              confidence: "high",
+              detail: `Literal HTTP call to ${host}`,
+            });
           }
-        } catch {}
+        } catch {
+          // Ignore malformed URLs
+        }
       } else {
-        // env-var-based fetch — medium confidence internal call
-        add({ target: "env-url", kind: "http", confidence: "medium" });
+        add({
+          target: "env-url",
+          kind: "http",
+          confidence: "medium",
+          detail: "HTTP call assembled from environment-derived URL",
+        });
       }
     }
   }
 
-  // 2. Env file or code referencing known env vars
   const isEnvFile = filePath.endsWith(".env") || filePath.includes(".env.");
   const lines = content.split("\n");
   for (const line of lines) {
-    // Database env vars
     for (const { pattern, name } of DB_ENV_PATTERNS) {
       if (pattern.test(line)) {
-        add({ target: name, kind: "database", confidence: isEnvFile ? "high" : "medium" });
+        add({
+          target: name,
+          kind: "database",
+          confidence: isEnvFile ? "high" : "medium",
+          detail: `Matched database environment hint for ${name}`,
+        });
         break;
       }
     }
-    // External service env vars
+
     for (const { pattern, name } of SERVICE_ENV_PATTERNS) {
       if (pattern.test(line)) {
-        add({ target: name, kind: "http", confidence: isEnvFile ? "high" : "medium" });
+        add({
+          target: name,
+          kind: "http",
+          confidence: isEnvFile ? "high" : "medium",
+          detail: `Matched external service environment hint for ${name}`,
+        });
         break;
       }
     }
-    // Internal URL env vars (cross-service references)
+
     if (INTERNAL_URL_ENV.test(line) && !isEnvFile) {
       const match = line.match(/process\.env\.(\w+)|import\.meta\.env\.(\w+)/);
-      if (match) {
-        add({ target: match[1] ?? match[2] ?? "env-ref", kind: "http", confidence: "low" });
+      const envName = match?.[1] ?? match?.[2];
+      if (envName) {
+        add({
+          target: envName,
+          kind: "http",
+          confidence: "low",
+          detail: `Potential internal service URL via env var ${envName}`,
+        });
       }
     }
   }
@@ -118,36 +145,51 @@ export function parseConnections(content: string, filePath: string): DetectedCon
   return results;
 }
 
-// Known DB image/package names → canonical database node name
 const DB_PACKAGE_MAP: Record<string, string> = {
-  "pg": "postgres", "postgres": "postgres", "@supabase/supabase-js": "supabase",
-  "mysql2": "mysql", "mysql": "mysql",
-  "mongodb": "mongodb", "mongoose": "mongodb",
-  "ioredis": "redis", "redis": "redis",
-  "elasticsearch": "elasticsearch", "@elastic/elasticsearch": "elasticsearch",
+  "pg": "postgres",
+  "postgres": "postgres",
+  "@supabase/supabase-js": "supabase",
+  "mysql2": "mysql",
+  "mysql": "mysql",
+  "mongodb": "mongodb",
+  "mongoose": "mongodb",
+  "ioredis": "redis",
+  "redis": "redis",
+  "elasticsearch": "elasticsearch",
+  "@elastic/elasticsearch": "elasticsearch",
   "cassandra-driver": "cassandra",
-  "sqlite3": "sqlite", "better-sqlite3": "sqlite",
-  "prisma": "postgres", "@prisma/client": "postgres",
-  "typeorm": "postgres", "sequelize": "postgres",
+  "sqlite3": "sqlite",
+  "better-sqlite3": "sqlite",
+  "prisma": "postgres",
+  "@prisma/client": "postgres",
+  "typeorm": "postgres",
+  "sequelize": "postgres",
   "drizzle-orm": "postgres",
   "knex": "postgres",
-  "amqplib": "rabbitmq", "kafkajs": "kafka",
+  "amqplib": "rabbitmq",
+  "kafkajs": "kafka",
 };
 
-// Well-known external SaaS package names → display name
 const SAAS_PACKAGE_MAP: Record<string, string> = {
-  "stripe": "stripe", "@stripe/stripe-js": "stripe",
+  "stripe": "stripe",
+  "@stripe/stripe-js": "stripe",
   "openai": "openai",
   "@anthropic-ai/sdk": "anthropic",
-  "sendgrid": "sendgrid", "@sendgrid/mail": "sendgrid",
+  "sendgrid": "sendgrid",
+  "@sendgrid/mail": "sendgrid",
   "resend": "resend",
   "twilio": "twilio",
   "cloudinary": "cloudinary",
-  "firebase": "firebase", "firebase-admin": "firebase",
-  "pusher": "pusher", "pusher-js": "pusher",
-  "@clerk/nextjs": "clerk", "@clerk/clerk-sdk-node": "clerk",
-  "auth0": "auth0", "@auth0/nextjs-auth0": "auth0",
-  "@sentry/node": "sentry", "@sentry/nextjs": "sentry",
+  "firebase": "firebase",
+  "firebase-admin": "firebase",
+  "pusher": "pusher",
+  "pusher-js": "pusher",
+  "@clerk/nextjs": "clerk",
+  "@clerk/clerk-sdk-node": "clerk",
+  "auth0": "auth0",
+  "@auth0/nextjs-auth0": "auth0",
+  "@sentry/node": "sentry",
+  "@sentry/nextjs": "sentry",
   "@datadog/datadog-api-client": "datadog",
 };
 

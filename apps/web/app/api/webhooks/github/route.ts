@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       .from("repos")
       .select("id")
       .eq("github_repo_id", payload.repository?.id)
+      .eq("is_active", true)
       .single();
 
     if (repo) {
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
         for (const repo of payload.repositories_added ?? []) {
           await db.from("repos").upsert({
             org_id: org.id, github_repo_id: repo.id, name: repo.name,
-            full_name: repo.full_name, private: repo.private, default_branch: "main",
+            full_name: repo.full_name, private: repo.private, default_branch: "main", is_active: false,
           }, { onConflict: "org_id,github_repo_id" });
         }
         for (const repo of payload.repositories_removed ?? []) {

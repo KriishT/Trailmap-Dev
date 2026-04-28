@@ -8,7 +8,7 @@ export function renderHtml(graph: DependencyGraph): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trailmap — ${graph.meta.repo}</title>
+  <title>Trailmap - ${graph.meta.repo}</title>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +32,7 @@ export function renderHtml(graph: DependencyGraph): string {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2">
       <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
     </svg>
-    <h1>Trailmap — ${graph.meta.repo}</h1>
+    <h1>Trailmap - ${graph.meta.repo}</h1>
     <span class="meta">Scanned ${new Date(graph.meta.scanned_at).toLocaleString()} · ${graph.nodes.length} services · ${graph.edges.length} edges</span>
   </header>
   <div id="graph"></div>

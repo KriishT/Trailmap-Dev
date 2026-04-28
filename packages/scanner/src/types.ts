@@ -1,6 +1,17 @@
 export type NodeType = "service" | "library" | "external" | "database" | "saas";
 export type EdgeType = "http" | "import" | "queue" | "database";
 export type Confidence = "high" | "medium" | "low";
+export type EvidenceKind =
+  | "manifest"
+  | "framework"
+  | "port"
+  | "openapi"
+  | "compose"
+  | "kubernetes"
+  | "import"
+  | "http-call"
+  | "env"
+  | "package-classification";
 export type Language =
   | "typescript"
   | "javascript"
@@ -9,6 +20,12 @@ export type Language =
   | "java"
   | "ruby"
   | "unknown";
+
+export interface GraphEvidence {
+  kind: EvidenceKind;
+  source: string;
+  detail: string;
+}
 
 export interface GraphNode {
   id: string;
@@ -20,6 +37,7 @@ export interface GraphNode {
   path: string;
   techStack?: string[];   // e.g. ["nextjs", "prisma", "tailwind"]
   framework?: string;     // e.g. "nextjs", "express", "fastapi"
+  evidence?: GraphEvidence[];
 }
 
 export interface GraphEdge {
@@ -27,6 +45,7 @@ export interface GraphEdge {
   to: string;
   type: EdgeType;
   confidence: Confidence;
+  evidence?: GraphEvidence[];
 }
 
 export interface GraphMeta {

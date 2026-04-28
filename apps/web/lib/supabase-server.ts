@@ -1,6 +1,12 @@
-﻿import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+
+type CookieMutation = {
+  name: string;
+  value: string;
+  options?: Record<string, unknown>;
+};
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -10,12 +16,14 @@ export async function createSupabaseServerClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: CookieMutation[]) => {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as any)
             );
-          } catch {}
+          } catch {
+            // Server components cannot always mutate cookies
+          }
         },
       },
     }

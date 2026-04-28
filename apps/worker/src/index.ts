@@ -23,6 +23,7 @@ async function pollAndProcess() {
     if (!pending?.length) return;
 
     const log = pending[0];
+    if (!log) return;
     console.log(`[worker] Processing scan ${log.id} for repo ${log.repo_id}`);
 
     await runScanJob({ scanLogId: log.id, repoId: log.repo_id });

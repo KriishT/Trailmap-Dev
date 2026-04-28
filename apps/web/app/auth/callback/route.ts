@@ -1,7 +1,12 @@
-﻿import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+type CookieMutation = {
+  name: string;
+  value: string;
+  options?: Record<string, unknown>;
+};
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -16,9 +21,9 @@ export async function GET(request: Request) {
       {
         cookies: {
           getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet) =>
+          setAll: (cookiesToSet: CookieMutation[]) =>
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as any)
             ),
         },
       }
@@ -27,18 +32,6 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.session) {
-      // Store provider_token (GitHub OAuth token) so worker can clone repos
-      const providerToken = data.session.provider_token;
-      if (providerToken) {
-        const admin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        await admin
-          .from("users")
-          .update({ github_token: providerToken })
-          .eq("id", data.session.user.id);
-      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

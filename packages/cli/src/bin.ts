@@ -24,7 +24,7 @@ program
     const targetDir = path.resolve(directory);
 
     if (!fs.existsSync(targetDir)) {
-      console.error(chalk.red(`✖ Directory not found: ${targetDir}`));
+      console.error(chalk.red(`x Directory not found: ${targetDir}`));
       process.exit(1);
     }
 
@@ -43,7 +43,7 @@ program
       spinner.succeed(
         chalk.green("Scan complete") +
           chalk.dim(
-            ` — ${graph.nodes.length} services, ${graph.edges.length} edges, ${graph.meta.total_files} files`
+            ` - ${graph.nodes.length} services, ${graph.edges.length} edges, ${graph.meta.total_files} files`
           )
       );
 
@@ -68,15 +68,15 @@ program
         console.log(output);
       }
 
-      // Print summary
       if (options.output !== "json") return;
+
       console.error("\n" + chalk.bold("Summary"));
-      console.error(chalk.dim("─".repeat(40)));
+      console.error(chalk.dim("-".repeat(40)));
       console.error(
-        chalk.dim("Services: ") + chalk.white(graph.nodes.filter((n) => n.type === "service").length)
+        chalk.dim("Services: ") + chalk.white(graph.nodes.filter((node) => node.type === "service").length)
       );
       console.error(
-        chalk.dim("Databases: ") + chalk.white(graph.nodes.filter((n) => n.type === "database").length)
+        chalk.dim("Databases: ") + chalk.white(graph.nodes.filter((node) => node.type === "database").length)
       );
       console.error(
         chalk.dim("Edges: ") + chalk.white(graph.edges.length)

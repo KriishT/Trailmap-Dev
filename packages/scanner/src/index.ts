@@ -4,9 +4,11 @@ export type {
   GraphNode,
   GraphEdge,
   GraphMeta,
+  GraphEvidence,
   ScanOptions,
   NodeType,
   EdgeType,
   Confidence,
+  EvidenceKind,
   Language,
 } from "./types.js";
