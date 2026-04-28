@@ -5,6 +5,7 @@ import { Clock3, GitBranch, Lock, RefreshCw, Loader2, ArrowUpRight } from "lucid
 import { timeAgo } from "@/lib/utils";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 interface Snapshot {
   id: string;
@@ -26,6 +27,7 @@ interface Repo {
 export function RepoList({ repos }: { repos: Repo[] }) {
   const [scanState, setScanState] = useState<Record<string, "idle" | "scanning" | "error">>({});
   const [scanMsg, setScanMsg] = useState<Record<string, string>>({});
+  const router = useRouter();
 
   async function triggerScan(repoId: string) {
     setScanState((state) => ({ ...state, [repoId]: "scanning" }));
@@ -39,8 +41,11 @@ export function RepoList({ repos }: { repos: Repo[] }) {
         return;
       }
 
-      setScanMsg((state) => ({ ...state, [repoId]: "Scanning now. Refreshing shortly..." }));
-      setTimeout(() => window.location.reload(), 15000);
+      setScanMsg((state) => ({ ...state, [repoId]: "Scanning now. We'll refresh this card shortly..." }));
+      setTimeout(() => {
+        setScanState((state) => ({ ...state, [repoId]: "idle" }));
+        router.refresh();
+      }, 15000);
     } catch (e: any) {
       setScanState((state) => ({ ...state, [repoId]: "error" }));
       setScanMsg((state) => ({ ...state, [repoId]: e.message || "Scan failed" }));
