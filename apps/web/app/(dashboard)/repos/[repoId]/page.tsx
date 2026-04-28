@@ -22,10 +22,12 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
     .select("id, raw_json, node_count, edge_count, scanned_at, commit_sha")
     .eq("repo_id", repoId)
     .order("scanned_at", { ascending: false })
-    .limit(1)
-    .single();
+    .limit(2);
 
-  if (!snapshot) {
+  const currentSnapshot = snapshot?.[0];
+  const previousSnapshot = snapshot?.[1];
+
+  if (!currentSnapshot) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
         <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "rgba(232,117,74,0.08)", border: "1px solid rgba(232,117,74,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -38,6 +40,8 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
       </div>
     );
   }
+
+  const snapshotMeta = currentSnapshot;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
@@ -57,16 +61,21 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
         <span className="font-body" style={{ fontSize: "0.875rem", fontWeight: 500, color: "#1A0F08" }}>{repo.full_name}</span>
         <div style={{ width: "1px", height: "14px", background: "rgba(26,15,8,0.1)" }} />
         <span className="font-body" style={{ fontSize: "0.75rem", color: "rgba(26,15,8,0.4)" }}>
-          <span style={{ color: "#E8754A" }}>{snapshot.node_count}</span> services ·{" "}
-          <span style={{ color: "#E8754A" }}>{snapshot.edge_count}</span> edges
-          {snapshot.commit_sha && <span style={{ marginLeft: "8px", fontFamily: "monospace", fontSize: "0.7rem", color: "rgba(26,15,8,0.25)" }}>{snapshot.commit_sha.slice(0, 7)}</span>}
+          <span style={{ color: "#E8754A" }}>{snapshotMeta.node_count}</span> services ·{" "}
+          <span style={{ color: "#E8754A" }}>{snapshotMeta.edge_count}</span> edges
+          {snapshotMeta.commit_sha && <span style={{ marginLeft: "8px", fontFamily: "monospace", fontSize: "0.7rem", color: "rgba(26,15,8,0.25)" }}>{snapshotMeta.commit_sha.slice(0, 7)}</span>}
         </span>
         <div style={{ marginLeft: "auto" }}>
-          <ShareButton snapshotId={snapshot.id} />
+          <ShareButton snapshotId={snapshotMeta.id} />
         </div>
       </div>
 
-      <RepoWorkspace graph={snapshot.raw_json as any} scannedAt={snapshot.scanned_at} />
+      <RepoWorkspace
+        graph={currentSnapshot.raw_json as any}
+        scannedAt={currentSnapshot.scanned_at}
+        previousGraph={(previousSnapshot?.raw_json as any) ?? undefined}
+        previousScannedAt={previousSnapshot?.scanned_at}
+      />
     </div>
   );
 }

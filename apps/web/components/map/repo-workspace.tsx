@@ -5,22 +5,28 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { DependencyGraph } from "@trailmap/scanner";
 import { RepoOverview } from "./repo-overview";
 import { MapView } from "./map-view";
+import { RepoChanges } from "./repo-changes";
 import { buildGraphInsights } from "@/lib/graph-insights";
 
-type WorkspaceMode = "overview" | "map" | "inventory";
+type WorkspaceMode = "overview" | "map" | "inventory" | "changes";
 
 const modes: Array<{ id: WorkspaceMode; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "map", label: "Map" },
   { id: "inventory", label: "Inventory" },
+  { id: "changes", label: "Changes" },
 ];
 
 export function RepoWorkspace({
   graph,
   scannedAt,
+  previousGraph,
+  previousScannedAt,
 }: {
   graph: DependencyGraph;
   scannedAt: string;
+  previousGraph?: DependencyGraph;
+  previousScannedAt?: string;
 }) {
   const [mode, setMode] = useState<WorkspaceMode>("map");
   const insights = buildGraphInsights(graph);
@@ -148,6 +154,24 @@ export function RepoWorkspace({
               <InventoryCard title="Data stores" items={storeItems} />
               <InventoryCard title="Vendors" items={vendorItems} />
             </div>
+          </motion.div>
+        )}
+
+        {mode === "changes" && (
+          <motion.div
+            key="changes"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            style={{ flex: 1, minHeight: 0, display: "flex" }}
+          >
+            <RepoChanges
+              currentGraph={graph}
+              previousGraph={previousGraph}
+              scannedAt={scannedAt}
+              previousScannedAt={previousScannedAt}
+            />
           </motion.div>
         )}
       </AnimatePresence>
