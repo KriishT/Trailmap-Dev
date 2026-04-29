@@ -235,6 +235,7 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
     ignore: excludePatterns,
     absolute: true,
     nodir: true,
+    dot: true,
   });
 
   const portToNodeId = new Map<string, string>();

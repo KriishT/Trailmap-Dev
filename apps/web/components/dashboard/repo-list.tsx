@@ -29,6 +29,41 @@ export function RepoList({ repos }: { repos: Repo[] }) {
   const [scanMsg, setScanMsg] = useState<Record<string, string>>({});
   const router = useRouter();
 
+  async function waitForScan(repoId: string, scanLogId: string) {
+    const deadline = Date.now() + 5 * 60 * 1000;
+
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+
+      const res = await fetch(`/api/scan-logs/${scanLogId}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.log) {
+        setScanState((state) => ({ ...state, [repoId]: "error" }));
+        setScanMsg((state) => ({ ...state, [repoId]: data.error || "Couldn't read scan progress" }));
+        return;
+      }
+
+      const { status, error_message: errorMessage } = data.log;
+
+      if (status === "completed") {
+        setScanState((state) => ({ ...state, [repoId]: "idle" }));
+        setScanMsg((state) => ({ ...state, [repoId]: "Scan complete. Refreshing card..." }));
+        router.refresh();
+        return;
+      }
+
+      if (status === "failed") {
+        setScanState((state) => ({ ...state, [repoId]: "error" }));
+        setScanMsg((state) => ({ ...state, [repoId]: errorMessage || "Scan failed" }));
+        router.refresh();
+        return;
+      }
+    }
+
+    setScanState((state) => ({ ...state, [repoId]: "error" }));
+    setScanMsg((state) => ({ ...state, [repoId]: "Scan is taking longer than expected. Try refreshing once." }));
+  }
+
   async function triggerScan(repoId: string) {
     setScanState((state) => ({ ...state, [repoId]: "scanning" }));
     setScanMsg((state) => ({ ...state, [repoId]: "" }));
@@ -41,11 +76,14 @@ export function RepoList({ repos }: { repos: Repo[] }) {
         return;
       }
 
-      setScanMsg((state) => ({ ...state, [repoId]: "Scanning now. We'll refresh this card shortly..." }));
-      setTimeout(() => {
-        setScanState((state) => ({ ...state, [repoId]: "idle" }));
-        router.refresh();
-      }, 15000);
+      if (!data.scanLogId) {
+        setScanState((state) => ({ ...state, [repoId]: "error" }));
+        setScanMsg((state) => ({ ...state, [repoId]: "Scan started, but progress tracking was missing" }));
+        return;
+      }
+
+      setScanMsg((state) => ({ ...state, [repoId]: "Scan is running. We'll update this card when it finishes..." }));
+      void waitForScan(repoId, data.scanLogId);
     } catch (e: any) {
       setScanState((state) => ({ ...state, [repoId]: "error" }));
       setScanMsg((state) => ({ ...state, [repoId]: e.message || "Scan failed" }));

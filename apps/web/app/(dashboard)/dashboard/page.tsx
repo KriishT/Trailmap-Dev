@@ -20,6 +20,8 @@ export default async function DashboardPage() {
           graph_snapshots (id, node_count, edge_count, scanned_at)`)
         .in("org_id", orgs.map((o) => o.id))
         .eq("is_active", true)
+        .order("scanned_at", { ascending: false, foreignTable: "graph_snapshots" })
+        .limit(1, { foreignTable: "graph_snapshots" })
         .order("last_scanned_at", { ascending: false })
     : { data: [] };
 

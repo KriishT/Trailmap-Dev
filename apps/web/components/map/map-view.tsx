@@ -11,7 +11,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import dagre from "dagre";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import type { DependencyGraph, GraphEdge, GraphNode } from "@trailmap/scanner";
 import { NodeDetailPanel } from "./node-detail-panel";
@@ -35,6 +35,10 @@ const NODE_WIDTH = 168;
 const NODE_HEIGHT = 44;
 const SECONDARY_WIDTH = 140;
 const SECONDARY_HEIGHT = 36;
+const LARGE_GRAPH_NODE_THRESHOLD = 45;
+const LARGE_GRAPH_EDGE_THRESHOLD = 90;
+const CONDENSIBLE_TYPES: Array<GraphNode["type"]> = ["external", "saas"];
+const MAX_VISIBLE_DEPENDENCIES_PER_TYPE = 8;
 
 type FocusMode = "full" | "neighbors" | "upstream" | "downstream";
 
@@ -52,6 +56,10 @@ const focusModes: Array<{ id: FocusMode; label: string }> = [
 ];
 
 function layoutGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
+  if (graph.nodes.length >= LARGE_GRAPH_NODE_THRESHOLD || graph.edges.length >= LARGE_GRAPH_EDGE_THRESHOLD) {
+    return layoutLargeGraph(graph);
+  }
+
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: "TB", nodesep: 120, ranksep: 140, marginx: 24, marginy: 24 });
@@ -72,6 +80,302 @@ function layoutGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = graph.nodes
     .map((node) => {
       const pos = g.node(node.id);
+      if (!pos) return null;
+
+      const cfg = NODE_CONFIGS[node.type] ?? NODE_CONFIGS.service;
+      const isService = node.type === "service";
+      const width = isService ? NODE_WIDTH : SECONDARY_WIDTH;
+      const height = isService ? NODE_HEIGHT : SECONDARY_HEIGHT;
+      const borderRadius =
+        cfg.shape === "pill" ? "999px" :
+        cfg.shape === "rect" ? "6px" : "10px";
+
+      return {
+        id: node.id,
+        position: { x: pos.x - width / 2, y: pos.y - height / 2 },
+        data: { label: buildNodeLabel(node), node },
+        type: "default",
+        style: {
+          background: isService ? "#FFFFFF" : `${cfg.color}12`,
+          border: `${isService ? "1.5px" : "1px"} solid ${cfg.color}${isService ? "" : "55"}`,
+          borderRadius,
+          color: "#1A0F08",
+          fontSize: isService ? "12px" : "11px",
+          fontFamily: "var(--font-body), system-ui, sans-serif",
+          fontWeight: isService ? 500 : 400,
+          width,
+          height,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 12px",
+          boxShadow: isService ? "0 2px 8px rgba(26,15,8,0.08)" : "none",
+        },
+      };
+    })
+    .filter(Boolean) as Node[];
+
+  const edges: Edge[] = graph.edges.map((edge, index) => ({
+    id: `e-${index}`,
+    source: edge.from,
+    target: edge.to,
+    label: edge.type === "database" ? "db" : edge.type === "http" ? undefined : edge.type,
+    animated: edge.type === "http",
+    style: {
+      stroke: EDGE_COLORS[edge.type] ?? "rgba(26,15,8,0.2)",
+      strokeWidth: edge.confidence === "high" ? 1.5 : 1,
+      strokeDasharray: edge.confidence === "low" ? "4,4" : undefined,
+    },
+    labelStyle: { fill: "rgba(26,15,8,0.35)", fontSize: 9, fontFamily: "var(--font-body)" },
+    labelBgStyle: { fill: "#FAF8F5", fillOpacity: 0.9 },
+    labelBgPadding: [3, 4] as [number, number],
+  }));
+
+  return { nodes, edges };
+}
+
+function layoutLargeGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
+  const serviceLikeNodes = graph.nodes.filter((node) => node.type === "service" || node.type === "library");
+  const serviceLikeIds = new Set(serviceLikeNodes.map((node) => node.id));
+  const serviceEdges = graph.edges.filter((edge) => serviceLikeIds.has(edge.from) && serviceLikeIds.has(edge.to));
+
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB", nodesep: 220, ranksep: 210, marginx: 48, marginy: 48 });
+
+  for (const node of serviceLikeNodes) {
+    const isService = node.type === "service";
+    g.setNode(node.id, {
+      width: isService ? NODE_WIDTH : SECONDARY_WIDTH,
+      height: isService ? NODE_HEIGHT : SECONDARY_HEIGHT,
+    });
+  }
+
+  for (const edge of serviceEdges) g.setEdge(edge.from, edge.to);
+  dagre.layout(g);
+
+  const positions = buildStructuredPositions(graph, serviceLikeNodes, g);
+  return buildFlowGraph(graph, positions);
+}
+
+function buildStructuredPositions(
+  graph: DependencyGraph,
+  serviceLikeNodes: GraphNode[],
+  dagreGraph: dagre.graphlib.Graph
+) {
+  const positions = new Map<string, { x: number; y: number }>();
+  const serviceRows = clusterServiceRows(serviceLikeNodes, dagreGraph);
+
+  const serviceRowGap = 190;
+  const serviceNodeGap = 54;
+
+  serviceRows.forEach((row, rowIndex) => {
+    const rowWidth = row.reduce((sum, node, index) => {
+      const width = node.type === "service" ? NODE_WIDTH : SECONDARY_WIDTH;
+      return sum + width + (index > 0 ? serviceNodeGap : 0);
+    }, 0);
+
+    let cursorX = -rowWidth / 2;
+    const y = rowIndex * serviceRowGap;
+
+    row.forEach((node) => {
+      const width = node.type === "service" ? NODE_WIDTH : SECONDARY_WIDTH;
+      positions.set(node.id, { x: cursorX + width / 2, y });
+      cursorX += width + serviceNodeGap;
+    });
+  });
+
+  const dependencyTargets = buildDesiredXTargets(graph, positions);
+  const serviceBandTop = serviceRows.length > 0 ? 0 : 0;
+  const serviceBandBottom = serviceRows.length > 0 ? (serviceRows.length - 1) * serviceRowGap : 0;
+
+  placeBandNodes(
+    graph.nodes.filter((node) => node.type === "database"),
+    dependencyTargets,
+    positions,
+    serviceBandBottom + 170,
+    SECONDARY_WIDTH,
+    36,
+    1500
+  );
+
+  placeBandNodes(
+    graph.nodes.filter((node) => node.type === "saas"),
+    dependencyTargets,
+    positions,
+    serviceBandBottom + 270,
+    SECONDARY_WIDTH,
+    36,
+    1500
+  );
+
+  placeBandNodes(
+    graph.nodes.filter((node) => node.type === "external"),
+    dependencyTargets,
+    positions,
+    serviceBandBottom + 370,
+    SECONDARY_WIDTH,
+    36,
+    1500
+  );
+
+  placeBandNodes(
+    graph.nodes.filter((node) => node.type === "library" && !positions.has(node.id)),
+    dependencyTargets,
+    positions,
+    serviceBandTop - 120,
+    SECONDARY_WIDTH,
+    36,
+    1500
+  );
+
+  normalizePositions(positions, 72, 72);
+  return positions;
+}
+
+function clusterServiceRows(serviceLikeNodes: GraphNode[], dagreGraph: dagre.graphlib.Graph) {
+  const positioned = serviceLikeNodes
+    .map((node) => ({ node, pos: dagreGraph.node(node.id) }))
+    .filter((entry) => entry.pos)
+    .sort((a, b) => {
+      const deltaY = (a.pos.y as number) - (b.pos.y as number);
+      if (Math.abs(deltaY) > 24) return deltaY;
+      return (a.pos.x as number) - (b.pos.x as number);
+    });
+
+  if (positioned.length === 0) return [serviceLikeNodes];
+
+  const rows: GraphNode[][] = [];
+  let currentRow: GraphNode[] = [];
+  let currentAnchorY = positioned[0].pos.y as number;
+
+  positioned.forEach(({ node, pos }) => {
+    if (currentRow.length === 0 || Math.abs((pos.y as number) - currentAnchorY) <= 80) {
+      currentRow.push(node);
+      currentAnchorY = currentRow.length === 1 ? (pos.y as number) : currentAnchorY;
+      return;
+    }
+
+    rows.push(currentRow.sort((left, right) => {
+      const leftPos = dagreGraph.node(left.id);
+      const rightPos = dagreGraph.node(right.id);
+      return (leftPos.x as number) - (rightPos.x as number);
+    }));
+    currentRow = [node];
+    currentAnchorY = pos.y as number;
+  });
+
+  if (currentRow.length > 0) {
+    rows.push(currentRow.sort((left, right) => {
+      const leftPos = dagreGraph.node(left.id);
+      const rightPos = dagreGraph.node(right.id);
+      return (leftPos.x as number) - (rightPos.x as number);
+    }));
+  }
+
+  return rows;
+}
+
+function buildDesiredXTargets(graph: DependencyGraph, knownPositions: Map<string, { x: number; y: number }>) {
+  const targets = new Map<string, number>();
+
+  graph.nodes.forEach((node, index) => {
+    if (knownPositions.has(node.id)) {
+      targets.set(node.id, knownPositions.get(node.id)!.x);
+      return;
+    }
+
+    const neighbors = graph.edges
+      .filter((edge) => edge.from === node.id || edge.to === node.id)
+      .map((edge) => (edge.from === node.id ? edge.to : edge.from))
+      .map((neighborId) => knownPositions.get(neighborId)?.x)
+      .filter((x): x is number => typeof x === "number");
+
+    if (neighbors.length > 0) {
+      targets.set(node.id, neighbors.reduce((sum, x) => sum + x, 0) / neighbors.length);
+      return;
+    }
+
+    targets.set(node.id, index * 180);
+  });
+
+  return targets;
+}
+
+function placeBandNodes(
+  nodes: GraphNode[],
+  targets: Map<string, number>,
+  positions: Map<string, { x: number; y: number }>,
+  startY: number,
+  width: number,
+  height: number,
+  maxRowWidth: number
+) {
+  if (nodes.length === 0) return;
+
+  const gap = 24;
+  const rowGap = height + 24;
+  const sorted = [...nodes].sort((left, right) => (targets.get(left.id) ?? 0) - (targets.get(right.id) ?? 0));
+
+  let rowIndex = 0;
+  let rowStartX = -maxRowWidth / 2;
+  let cursorX = rowStartX;
+  let rowNodes: Array<{ node: GraphNode; targetX: number }> = [];
+
+  const flushRow = () => {
+    if (rowNodes.length === 0) return;
+
+    const rowWidth = rowNodes.length * width + (rowNodes.length - 1) * gap;
+    let rowCursor = -rowWidth / 2;
+
+    rowNodes.forEach(({ node }) => {
+      positions.set(node.id, {
+        x: rowCursor + width / 2,
+        y: startY + rowIndex * rowGap,
+      });
+      rowCursor += width + gap;
+    });
+
+    rowNodes = [];
+    rowIndex += 1;
+    cursorX = rowStartX;
+  };
+
+  sorted.forEach((node) => {
+    const targetX = targets.get(node.id) ?? 0;
+    const projectedX = Math.max(cursorX, targetX - width / 2);
+
+    if (projectedX + width - rowStartX > maxRowWidth && rowNodes.length > 0) {
+      flushRow();
+    }
+
+    rowNodes.push({ node, targetX });
+    cursorX = Math.max(cursorX, targetX - width / 2) + width + gap;
+  });
+
+  flushRow();
+}
+
+function normalizePositions(positions: Map<string, { x: number; y: number }>, marginX: number, marginY: number) {
+  if (positions.size === 0) return;
+
+  const xs = Array.from(positions.values()).map((pos) => pos.x);
+  const ys = Array.from(positions.values()).map((pos) => pos.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+
+  positions.forEach((pos, id) => {
+    positions.set(id, {
+      x: pos.x - minX + marginX,
+      y: pos.y - minY + marginY,
+    });
+  });
+}
+
+function buildFlowGraph(graph: DependencyGraph, positions: Map<string, { x: number; y: number }>): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = graph.nodes
+    .map((node) => {
+      const pos = positions.get(node.id);
       if (!pos) return null;
 
       const cfg = NODE_CONFIGS[node.type] ?? NODE_CONFIGS.service;
@@ -173,9 +477,21 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdgeState | null>(null);
   const [showLowConfidence, setShowLowConfidence] = useState(false);
   const [focusMode, setFocusMode] = useState<FocusMode>("full");
-  const { nodes: baseNodes, edges: baseEdges } = useMemo(() => layoutGraph(graph), [graph]);
+  const [condenseLargeGraph, setCondenseLargeGraph] = useState(true);
+  const isLargeGraph = graph.nodes.length >= LARGE_GRAPH_NODE_THRESHOLD || graph.edges.length >= LARGE_GRAPH_EDGE_THRESHOLD;
+  const displayGraph = useMemo(
+    () => (isLargeGraph && condenseLargeGraph ? condenseGraph(graph) : graph),
+    [condenseLargeGraph, graph, isLargeGraph]
+  );
+  const { nodes: baseNodes, edges: baseEdges } = useMemo(() => layoutGraph(displayGraph), [displayGraph]);
 
-  const relation = selectedNode ? getFocusRelation(graph, selectedNode.id, focusMode) : null;
+  useEffect(() => {
+    if (selectedNode && !displayGraph.nodes.some((node) => node.id === selectedNode.id)) {
+      setSelectedNode(null);
+    }
+  }, [displayGraph.nodes, selectedNode]);
+
+  const relation = selectedNode ? getFocusRelation(displayGraph, selectedNode.id, focusMode) : null;
   const activeNodeIds = relation?.activeNodeIds ?? new Set<string>();
   const highlightedNodeIds = relation?.highlightedNodeIds ?? new Set<string>();
   const highlightedEdgeIndexes = relation?.highlightedEdgeIndexes ?? new Set<number>();
@@ -207,7 +523,7 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
 
   const visibleEdges = useMemo(() => (
     baseEdges
-      .map((edge, index) => ({ edge, index, graphEdge: graph.edges[index] }))
+      .map((edge, index) => ({ edge, index, graphEdge: displayGraph.edges[index] }))
       .filter(({ edge, graphEdge, index }) => {
         if (!showLowConfidence && graphEdge?.confidence === "low") return false;
         if (!selectedNode || focusMode === "full") return true;
@@ -233,7 +549,7 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
           },
         };
       })
-  ), [activeNodeIds, baseEdges, focusMode, graph.edges, highlightedEdgeIndexes, selectedEdge, selectedNode, showLowConfidence]);
+  ), [activeNodeIds, baseEdges, displayGraph.edges, focusMode, highlightedEdgeIndexes, selectedEdge, selectedNode, showLowConfidence]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const graphNode = node.data.node as GraphNode;
@@ -243,20 +559,20 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
 
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     const edgeIndex = Number(edge.id.replace("e-", ""));
-    const graphEdge = graph.edges[edgeIndex];
+    const graphEdge = displayGraph.edges[edgeIndex];
     if (!graphEdge) return;
 
     setSelectedEdge({
       edge: graphEdge,
-      sourceName: graph.nodes.find((node) => node.id === graphEdge.from)?.name ?? graphEdge.from,
-      targetName: graph.nodes.find((node) => node.id === graphEdge.to)?.name ?? graphEdge.to,
+      sourceName: displayGraph.nodes.find((node) => node.id === graphEdge.from)?.name ?? graphEdge.from,
+      targetName: displayGraph.nodes.find((node) => node.id === graphEdge.to)?.name ?? graphEdge.to,
     });
-  }, [graph.edges, graph.nodes]);
+  }, [displayGraph.edges, displayGraph.nodes]);
 
-  const serviceCount = graph.nodes.filter((node) => node.type === "service").length;
-  const dbCount = graph.nodes.filter((node) => node.type === "database").length;
-  const saasCount = graph.nodes.filter((node) => node.type === "saas").length;
-  const externalCount = graph.nodes.filter((node) => node.type === "external").length;
+  const serviceCount = displayGraph.nodes.filter((node) => node.type === "service").length;
+  const dbCount = displayGraph.nodes.filter((node) => node.type === "database").length;
+  const saasCount = displayGraph.nodes.filter((node) => node.type === "saas").length;
+  const externalCount = displayGraph.nodes.filter((node) => node.type === "external").length;
 
   const legendEntries = Object.entries(NODE_CONFIGS).filter(([type]) => {
     if (type === "service") return serviceCount > 0;
@@ -363,10 +679,31 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
                 Show inferred edges
               </label>
 
+              {isLargeGraph && (
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "0.75rem",
+                  color: "rgba(26,15,8,0.5)",
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={condenseLargeGraph}
+                    onChange={(e) => setCondenseLargeGraph(e.target.checked)}
+                    style={{ width: "12px", height: "12px" }}
+                  />
+                  Condense low-signal dependencies
+                </label>
+              )}
+
               <p style={{ fontSize: "0.72rem", color: "rgba(26,15,8,0.36)", lineHeight: 1.5 }}>
                 {selectedNode
                   ? `${selectedNode.name} is selected. Switch scope to isolate related nodes.`
-                  : "Select a node to narrow the graph around its dependencies."}
+                  : isLargeGraph && condenseLargeGraph
+                    ? "Large graph mode is condensing repeated vendor nodes so the main service structure stays readable."
+                    : "Select a node to narrow the graph around its dependencies."}
               </p>
             </div>
           </Panel>
@@ -439,11 +776,120 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
 
       <AnimatePresence>
         {selectedNode && (
-          <NodeDetailPanel node={selectedNode} graph={graph} onClose={() => setSelectedNode(null)} />
+          <NodeDetailPanel node={selectedNode} graph={displayGraph} onClose={() => setSelectedNode(null)} />
         )}
       </AnimatePresence>
     </div>
   );
+}
+
+function condenseGraph(graph: DependencyGraph): DependencyGraph {
+  const degreeByNode = new Map<string, number>();
+  graph.nodes.forEach((node) => degreeByNode.set(node.id, 0));
+  graph.edges.forEach((edge) => {
+    degreeByNode.set(edge.from, (degreeByNode.get(edge.from) ?? 0) + 1);
+    degreeByNode.set(edge.to, (degreeByNode.get(edge.to) ?? 0) + 1);
+  });
+
+  const hiddenIds = new Set<string>();
+  const summaryNodes: GraphNode[] = [];
+  const summaryByType = new Map<string, GraphNode>();
+
+  for (const type of CONDENSIBLE_TYPES) {
+    const nodesOfType = graph.nodes
+      .filter((node) => node.type === type)
+      .sort((left, right) => {
+        const degreeDelta = (degreeByNode.get(right.id) ?? 0) - (degreeByNode.get(left.id) ?? 0);
+        if (degreeDelta !== 0) return degreeDelta;
+        return left.name.localeCompare(right.name);
+      });
+
+    if (nodesOfType.length <= MAX_VISIBLE_DEPENDENCIES_PER_TYPE + 3) continue;
+
+    const visible = nodesOfType.slice(0, MAX_VISIBLE_DEPENDENCIES_PER_TYPE);
+    const hidden = nodesOfType.slice(MAX_VISIBLE_DEPENDENCIES_PER_TYPE);
+    hidden.forEach((node) => hiddenIds.add(node.id));
+
+    const summaryNode: GraphNode = {
+      id: `summary-${type}`,
+      name: `+${hidden.length} more ${type === "external" ? "vendors" : "SaaS tools"}`,
+      type,
+      language: "unknown",
+      port: null,
+      endpoints: [],
+      path: "",
+      framework: undefined,
+      techStack: [],
+      evidence: [
+        {
+          kind: "package-classification" as const,
+          source: "summary",
+          detail: `Collapsed ${hidden.length} lower-signal ${type} node${hidden.length === 1 ? "" : "s"} to keep the large graph readable. Examples: ${hidden.slice(0, 5).map((node) => node.name).join(", ")}${hidden.length > 5 ? ", and more." : "."}`,
+        },
+      ],
+    };
+
+    summaryNodes.push(summaryNode);
+    summaryByType.set(type, summaryNode);
+  }
+
+  if (hiddenIds.size === 0) return graph;
+
+  const visibleNodes = graph.nodes.filter((node) => !hiddenIds.has(node.id));
+  const edgeMap = new Map<string, GraphEdge>();
+
+  const upsertEdge = (edge: GraphEdge) => {
+    const key = `${edge.from}::${edge.to}::${edge.type}`;
+    const existing = edgeMap.get(key);
+    if (!existing) {
+      edgeMap.set(key, edge);
+      return;
+    }
+
+    existing.confidence = strongerConfidence(existing.confidence, edge.confidence);
+    existing.evidence = [...(existing.evidence ?? []), ...(edge.evidence ?? [])].slice(0, 6);
+  };
+
+  graph.edges.forEach((edge) => {
+    const fromHidden = hiddenIds.has(edge.from);
+    const toHidden = hiddenIds.has(edge.to);
+
+    if (fromHidden && toHidden) return;
+
+    const fromNode = graph.nodes.find((node) => node.id === edge.from);
+    const toNode = graph.nodes.find((node) => node.id === edge.to);
+    const mappedFrom = fromHidden && fromNode ? summaryByType.get(fromNode.type)?.id : edge.from;
+    const mappedTo = toHidden && toNode ? summaryByType.get(toNode.type)?.id : edge.to;
+
+    if (!mappedFrom || !mappedTo || mappedFrom === mappedTo) return;
+
+    upsertEdge({
+      ...edge,
+      from: mappedFrom,
+      to: mappedTo,
+      evidence: (fromHidden || toHidden)
+        ? [
+            {
+              kind: "package-classification" as const,
+              source: "summary",
+              detail: "This edge represents one or more collapsed low-signal dependencies in large-graph mode.",
+            },
+            ...(edge.evidence ?? []),
+          ].slice(0, 4)
+        : edge.evidence,
+    });
+  });
+
+  return {
+    ...graph,
+    nodes: [...visibleNodes, ...summaryNodes],
+    edges: [...edgeMap.values()],
+  };
+}
+
+function strongerConfidence(left: GraphEdge["confidence"], right: GraphEdge["confidence"]): GraphEdge["confidence"] {
+  const order = { low: 1, medium: 2, high: 3 };
+  return order[right] > order[left] ? right : left;
 }
 
 function getFocusRelation(graph: DependencyGraph, nodeId: string, mode: FocusMode) {

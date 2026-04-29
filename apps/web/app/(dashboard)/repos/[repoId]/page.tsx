@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { ShareButton } from "@/components/map/share-button";
 import { RepoWorkspace } from "@/components/map/repo-workspace";
 import { ArrowLeft } from "lucide-react";
+import { selectDiffBaseline, type ComparableSnapshot } from "@/lib/graph-diff";
 
 export default async function RepoMapPage({ params }: { params: Promise<{ repoId: string }> }) {
   const { repoId } = await params;
@@ -22,10 +23,10 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
     .select("id, raw_json, node_count, edge_count, scanned_at, commit_sha")
     .eq("repo_id", repoId)
     .order("scanned_at", { ascending: false })
-    .limit(2);
+    .limit(12);
 
   const currentSnapshot = snapshot?.[0];
-  const previousSnapshot = snapshot?.[1];
+  const previousSnapshot = selectDiffBaseline((snapshot ?? []) as ComparableSnapshot[]);
 
   if (!currentSnapshot) {
     return (
@@ -71,6 +72,7 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
       </div>
 
       <RepoWorkspace
+        repoId={repo.id}
         graph={currentSnapshot.raw_json as any}
         scannedAt={currentSnapshot.scanned_at}
         previousGraph={(previousSnapshot?.raw_json as any) ?? undefined}

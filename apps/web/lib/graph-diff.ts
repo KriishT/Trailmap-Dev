@@ -1,5 +1,3 @@
-"use client";
-
 import type { Confidence, DependencyGraph, EdgeType, GraphNode, NodeType } from "@trailmap/scanner";
 
 export interface DiffNodeItem {
@@ -42,6 +40,13 @@ export interface GraphSnapshotDiff {
   removedDataStores: DiffNodeItem[];
   removedVendors: DiffNodeItem[];
   hasChanges: boolean;
+}
+
+export interface ComparableSnapshot {
+  id: string;
+  raw_json: DependencyGraph;
+  scanned_at: string;
+  commit_sha?: string | null;
 }
 
 export function diffGraphs(current: DependencyGraph, previous: DependencyGraph): GraphSnapshotDiff {
@@ -114,6 +119,30 @@ export function diffGraphs(current: DependencyGraph, previous: DependencyGraph):
       removedEdges.length > 0 ||
       changedEdgeConfidence.length > 0,
   };
+}
+
+export function hasStructuralChanges(current: DependencyGraph, previous: DependencyGraph): boolean {
+  return diffGraphs(current, previous).hasChanges;
+}
+
+export function selectDiffBaseline(snapshots: ComparableSnapshot[]): ComparableSnapshot | undefined {
+  if (snapshots.length < 2) return undefined;
+
+  const [current, ...history] = snapshots;
+
+  if (current.commit_sha) {
+    const previousDifferentCommit = history.find(
+      (snapshot) => snapshot.commit_sha && snapshot.commit_sha !== current.commit_sha
+    );
+    if (previousDifferentCommit) return previousDifferentCommit;
+  }
+
+  const previousDifferentGraph = history.find((snapshot) =>
+    hasStructuralChanges(current.raw_json, snapshot.raw_json)
+  );
+  if (previousDifferentGraph) return previousDifferentGraph;
+
+  return history[0];
 }
 
 function getNodeKey(node: GraphNode): string {

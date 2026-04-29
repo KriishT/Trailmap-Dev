@@ -1,7 +1,8 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { scanRepo } from "@/lib/scan";
+import { buildPrImpactComment, computePrImpactForRepo, upsertPrImpactComment } from "@/lib/github-pr-impact";
 
 function verifySignature(payload: string, signature: string): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET ?? "";
@@ -25,7 +26,6 @@ export async function POST(req: Request) {
   const payload = JSON.parse(body);
   const db = supabaseAdmin();
 
-  // Push to default branch — scan immediately
   if (event === "push") {
     const branch = payload.ref?.replace("refs/heads/", "");
     const defaultBranch = payload.repository?.default_branch;
@@ -49,17 +49,53 @@ export async function POST(req: Request) {
         .single();
 
       if (log) {
-        // Fire and forget — don't await so webhook returns fast
         scanRepo(repo.id, log.id).catch(console.error);
       }
     }
   }
 
-  // Installation events — sync repos
+  if (event === "pull_request") {
+    const action = payload.action;
+    const prNumber = payload.pull_request?.number;
+    const githubRepoId = payload.repository?.id;
+
+    if (["opened", "reopened", "synchronize"].includes(action) && prNumber && githubRepoId) {
+      const { data: repo } = await db
+        .from("repos")
+        .select("id, is_active")
+        .eq("github_repo_id", githubRepoId)
+        .single();
+
+      if (repo?.is_active) {
+        const impact = await computePrImpactForRepo({ repoId: repo.id, prNumber });
+        if (impact.ok) {
+          const commentBody = buildPrImpactComment({
+            source: impact.source,
+            snapshotCommit: impact.snapshotCommit,
+            analysis: impact.analysis,
+            trailmapUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+            repoId: repo.id,
+          });
+
+          const commentResult = await upsertPrImpactComment({
+            installationId: impact.installationId,
+            fullName: impact.fullName,
+            prNumber,
+            body: commentBody,
+          });
+
+          if (!commentResult.ok) {
+            console.error("[trailmap] PR comment failed", commentResult.error);
+          }
+        } else {
+          console.error("[trailmap] PR impact failed", impact.error);
+        }
+      }
+    }
+  }
+
   if (event === "installation" || event === "installation_repositories") {
     const installationId = payload.installation?.id;
-    const orgLogin = payload.installation?.account?.login;
-    const orgId = payload.installation?.account?.id;
 
     if (event === "installation_repositories") {
       const { data: org } = await db
@@ -86,4 +122,4 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-export const maxDuration = 300; // 5 min timeout on Vercel Pro
+export const maxDuration = 300;
