@@ -27,6 +27,7 @@ export interface ChangedFileImpact {
   path: string;
   serviceId: string | null;
   serviceName: string | null;
+  owners: string[];
 }
 
 export interface PrTouchedServiceItem {
@@ -34,6 +35,7 @@ export interface PrTouchedServiceItem {
   name: string;
   path: string;
   changedFiles: string[];
+  owners: string[];
   blastRadius: number;
   riskLevel: "low" | "medium" | "high";
 }
@@ -42,6 +44,7 @@ export interface PrImpactAnalysis {
   changedFiles: ChangedFileImpact[];
   touchedServices: PrTouchedServiceItem[];
   unmatchedFiles: string[];
+  suggestedReviewers: string[];
   affectedVendors: string[];
   affectedDataStores: string[];
   affectedDependents: string[];
@@ -165,20 +168,25 @@ function riskRank(level: "low" | "medium" | "high"): number {
 
 export function buildPrImpactAnalysis(
   graph: DependencyGraph,
-  changedFilePaths: string[]
+  changedFilePaths: string[],
+  ownershipByPath: Map<string, string[]> = new Map()
 ): PrImpactAnalysis {
   const serviceNodes = graph.nodes.filter((node) => node.type === "service");
   const changedFiles = changedFilePaths.map((filePath) => {
     const matchedService = matchFileToService(serviceNodes, filePath);
+    const normalizedPath = normalizePath(filePath);
     return {
-      path: normalizePath(filePath),
+      path: normalizedPath,
       serviceId: matchedService?.id ?? null,
       serviceName: matchedService?.name ?? null,
+      owners: ownershipByPath.get(normalizedPath) ?? [],
     };
   });
 
   const byService = new Map<string, PrTouchedServiceItem>();
+  const suggestedReviewers = new Set<string>();
   for (const item of changedFiles) {
+    item.owners.forEach((owner) => suggestedReviewers.add(owner));
     if (!item.serviceId) continue;
     const service = serviceNodes.find((node) => node.id === item.serviceId);
     if (!service) continue;
@@ -186,6 +194,7 @@ export function buildPrImpactAnalysis(
     const existing = byService.get(service.id);
     if (existing) {
       existing.changedFiles.push(item.path);
+      existing.owners = [...new Set([...existing.owners, ...item.owners])];
       continue;
     }
 
@@ -194,6 +203,7 @@ export function buildPrImpactAnalysis(
       name: service.name,
       path: service.path,
       changedFiles: [item.path],
+      owners: [...item.owners],
       blastRadius: metrics.blastRadiusCount,
       riskLevel: metrics.riskLevel,
     });
@@ -231,10 +241,18 @@ export function buildPrImpactAnalysis(
     changedFiles,
     touchedServices,
     unmatchedFiles,
+    suggestedReviewers: [...suggestedReviewers].sort(),
     affectedVendors: [...affectedVendors].sort(),
     affectedDataStores: [...affectedDataStores].sort(),
     affectedDependents: [...affectedDependents].sort(),
-    summary: buildPrSummary(touchedServices, affectedVendors.size, affectedDataStores.size, affectedDependents.size, unmatchedFiles.length),
+    summary: buildPrSummary(
+      touchedServices,
+      affectedVendors.size,
+      affectedDataStores.size,
+      affectedDependents.size,
+      unmatchedFiles.length,
+      suggestedReviewers.size
+    ),
   };
 }
 
@@ -264,7 +282,8 @@ function buildPrSummary(
   vendorCount: number,
   dataStoreCount: number,
   dependentCount: number,
-  unmatchedFileCount: number
+  unmatchedFileCount: number,
+  reviewerCount: number
 ): string {
   const lead = touchedServices[0];
   const leadText = lead
@@ -282,6 +301,10 @@ function buildPrSummary(
     unmatchedFileCount > 0
       ? `${unmatchedFileCount} changed file${unmatchedFileCount === 1 ? "" : "s"} did not map cleanly`
       : "All changed files mapped to known services";
+  const reviewerText =
+    reviewerCount > 0
+      ? `${reviewerCount} owner${reviewerCount === 1 ? "" : "s"} surfaced from CODEOWNERS`
+      : "No CODEOWNERS matches surfaced yet";
 
-  return `${leadText}. ${dependencyText}. ${dependentText}. ${unmatchedText}.`;
+  return `${leadText}. ${dependencyText}. ${dependentText}. ${unmatchedText}. ${reviewerText}.`;
 }

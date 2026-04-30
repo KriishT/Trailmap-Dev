@@ -389,6 +389,11 @@ function PrImpactView({ analysis }: { analysis: PrImpactAnalysis }) {
                       <div style={{ fontSize: "0.74rem", color: "rgba(26,15,8,0.42)", marginTop: "2px" }}>
                         {service.path || "/"} · blast radius {service.blastRadius}
                       </div>
+                      {service.owners.length > 0 && (
+                        <div style={{ fontSize: "0.74rem", color: "rgba(26,15,8,0.46)", marginTop: "5px", lineHeight: 1.45 }}>
+                          Owners: {service.owners.join(", ")}
+                        </div>
+                      )}
                       <div style={{ fontSize: "0.74rem", color: "rgba(26,15,8,0.46)", marginTop: "6px", lineHeight: 1.45 }}>
                         {service.changedFiles.slice(0, 3).join(", ")}
                         {service.changedFiles.length > 3 ? ` +${service.changedFiles.length - 3} more` : ""}
@@ -405,6 +410,14 @@ function PrImpactView({ analysis }: { analysis: PrImpactAnalysis }) {
         </Panel>
 
         <div style={{ display: "grid", gap: "12px" }}>
+          <Panel title="Suggested reviewers" icon={GitPullRequest}>
+            {analysis.suggestedReviewers.length > 0 ? (
+              <Section label="CODEOWNERS" items={analysis.suggestedReviewers} />
+            ) : (
+              <MutedText>No CODEOWNERS reviewers surfaced for these changed files yet.</MutedText>
+            )}
+          </Panel>
+
           <Panel title="Downstream surface" icon={Sparkles}>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {analysis.affectedVendors.length > 0 && <Section label="Vendors" items={analysis.affectedVendors} />}
@@ -428,7 +441,6 @@ function PrImpactView({ analysis }: { analysis: PrImpactAnalysis }) {
     </>
   );
 }
-
 function ServiceImpactRow({ service }: { service: ImpactServiceItem }) {
   return (
     <div style={itemStyle}>
@@ -727,3 +739,4 @@ const itemStyle = {
   color: "rgba(26,15,8,0.62)",
   lineHeight: 1.45,
 } satisfies React.CSSProperties;
+

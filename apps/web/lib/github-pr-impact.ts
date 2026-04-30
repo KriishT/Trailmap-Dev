@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
 import { supabaseAdmin } from "./supabase-server";
 import { buildPrImpactAnalysis, type PrImpactAnalysis } from "./graph-impact";
+import { matchOwnersForPath, parseCodeowners, type CodeownersRule } from "./codeowners";
 
 const TRAILMAP_PR_COMMENT_MARKER = "<!-- trailmap-pr-impact -->";
 
@@ -130,6 +131,51 @@ export async function getChangedFilesForImpact({
   }
 }
 
+async function getCodeownersRulesForRepo({
+  octokit,
+  fullName,
+  ref,
+}: {
+  octokit: Octokit;
+  fullName: string;
+  ref?: string | null;
+}): Promise<CodeownersRule[]> {
+  const [owner, repo] = fullName.split("/");
+  const candidatePaths = [".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"];
+
+  for (const path of candidatePaths) {
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path,
+        ...(ref ? { ref } : {}),
+      });
+
+      if (!("content" in data) || !data.content) continue;
+      const content = Buffer.from(data.content, "base64").toString("utf8");
+      const rules = parseCodeowners(content);
+      if (rules.length > 0) return rules;
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
+}
+
+function normalizePath(value: string) {
+  return value.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
+}
+
+function buildOwnershipMap(filePaths: string[], rules: CodeownersRule[]) {
+  const ownership = new Map<string, string[]>();
+  for (const filePath of filePaths) {
+    ownership.set(normalizePath(filePath), matchOwnersForPath(filePath, rules));
+  }
+  return ownership;
+}
+
 export async function computePrImpactForRepo({
   repoId,
   prNumber,
@@ -169,13 +215,20 @@ export async function computePrImpactForRepo({
 
   if (!changedFiles.ok) return changedFiles;
 
+  const codeownersRules = await getCodeownersRulesForRepo({
+    octokit,
+    fullName: context.fullName,
+    ref: head ?? context.snapshotCommit ?? context.defaultBranch,
+  });
+  const ownershipByPath = buildOwnershipMap(changedFiles.files, codeownersRules);
+
   return {
     ok: true,
     fullName: context.fullName,
     snapshotId: context.snapshotId,
     snapshotCommit: context.snapshotCommit,
     source: changedFiles.source,
-    analysis: buildPrImpactAnalysis(context.graph, changedFiles.files),
+    analysis: buildPrImpactAnalysis(context.graph, changedFiles.files, ownershipByPath),
     installationId: context.installationId,
     prNumber,
   };
@@ -201,12 +254,23 @@ export function buildPrImpactComment(args: {
   if (analysis.touchedServices.length > 0) {
     lines.push("### Touched Services");
     for (const service of analysis.touchedServices.slice(0, 6)) {
-      lines.push(`- **${service.name}** · risk ${service.riskLevel} · blast radius ${service.blastRadius}`);
+      const ownerText = service.owners.length > 0 ? ` · owners ${service.owners.join(", ")}` : "";
+      lines.push(`- **${service.name}** · risk ${service.riskLevel} · blast radius ${service.blastRadius}${ownerText}`);
     }
     lines.push("");
   }
 
-  if (analysis.affectedVendors.length > 0 || analysis.affectedDataStores.length > 0 || analysis.affectedDependents.length > 0) {
+  if (analysis.suggestedReviewers.length > 0) {
+    lines.push("### Suggested Reviewers");
+    lines.push(`- ${analysis.suggestedReviewers.join(", ")}`);
+    lines.push("");
+  }
+
+  if (
+    analysis.affectedVendors.length > 0 ||
+    analysis.affectedDataStores.length > 0 ||
+    analysis.affectedDependents.length > 0
+  ) {
     lines.push("### Downstream Surface");
     if (analysis.affectedVendors.length > 0) lines.push(`- Vendors: ${analysis.affectedVendors.slice(0, 8).join(", ")}`);
     if (analysis.affectedDataStores.length > 0) lines.push(`- Data stores: ${analysis.affectedDataStores.slice(0, 8).join(", ")}`);
@@ -279,3 +343,4 @@ export async function upsertPrImpactComment({
     return { ok: false, error: message, status: 500 };
   }
 }
+
