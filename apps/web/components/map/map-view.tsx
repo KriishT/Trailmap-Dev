@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import type { DependencyGraph, GraphEdge, GraphNode } from "@trailmap/scanner";
 import { NodeDetailPanel } from "./node-detail-panel";
+import { timeAgo } from "@/lib/utils";
 
 const NODE_CONFIGS: Record<string, { color: string; shape: "rect" | "rounded" | "pill"; label: string }> = {
   service: { color: "#E8754A", shape: "rounded", label: "Service" },
@@ -31,10 +32,10 @@ const EDGE_COLORS: Record<string, string> = {
   database: "#7C6FE0",
 };
 
-const NODE_WIDTH = 168;
-const NODE_HEIGHT = 44;
-const SECONDARY_WIDTH = 140;
-const SECONDARY_HEIGHT = 36;
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 84;
+const SECONDARY_WIDTH = 168;
+const SECONDARY_HEIGHT = 86;
 const LARGE_GRAPH_NODE_THRESHOLD = 45;
 const LARGE_GRAPH_EDGE_THRESHOLD = 90;
 const CONDENSIBLE_TYPES: Array<GraphNode["type"]> = ["external", "saas"];
@@ -62,7 +63,7 @@ function layoutGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "TB", nodesep: 120, ranksep: 140, marginx: 24, marginy: 24 });
+  g.setGraph({ rankdir: "TB", nodesep: 132, ranksep: 170, marginx: 36, marginy: 36 });
 
   for (const node of graph.nodes) {
     const isService = node.type === "service";
@@ -96,8 +97,8 @@ function layoutGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
         data: { label: buildNodeLabel(node), node },
         type: "default",
         style: {
-          background: isService ? "#FFFFFF" : `${cfg.color}12`,
-          border: `${isService ? "1.5px" : "1px"} solid ${cfg.color}${isService ? "" : "55"}`,
+          background: "rgba(255,255,255,0.96)",
+          border: `${isService ? "1.5px" : "1px"} solid ${cfg.color}${isService ? "7A" : "42"}`,
           borderRadius,
           color: "#1A0F08",
           fontSize: isService ? "12px" : "11px",
@@ -106,10 +107,12 @@ function layoutGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[] } {
           width,
           height,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 12px",
-          boxShadow: isService ? "0 2px 8px rgba(26,15,8,0.08)" : "none",
+          alignItems: "stretch",
+          justifyContent: "stretch",
+          padding: "0",
+          boxShadow: isService
+            ? `0 18px 32px ${cfg.color}12, 0 2px 10px rgba(26,15,8,0.05)`
+            : `0 12px 26px ${cfg.color}0F, 0 2px 8px rgba(26,15,8,0.04)`,
         },
       };
     })
@@ -141,7 +144,7 @@ function layoutLargeGraph(graph: DependencyGraph): { nodes: Node[]; edges: Edge[
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "TB", nodesep: 220, ranksep: 210, marginx: 48, marginy: 48 });
+  g.setGraph({ rankdir: "TB", nodesep: 240, ranksep: 238, marginx: 56, marginy: 56 });
 
   for (const node of serviceLikeNodes) {
     const isService = node.type === "service";
@@ -166,8 +169,8 @@ function buildStructuredPositions(
   const positions = new Map<string, { x: number; y: number }>();
   const serviceRows = clusterServiceRows(serviceLikeNodes, dagreGraph);
 
-  const serviceRowGap = 190;
-  const serviceNodeGap = 54;
+  const serviceRowGap = 238;
+  const serviceNodeGap = 68;
 
   serviceRows.forEach((row, rowIndex) => {
     const rowWidth = row.reduce((sum, node, index) => {
@@ -193,7 +196,7 @@ function buildStructuredPositions(
     graph.nodes.filter((node) => node.type === "database"),
     dependencyTargets,
     positions,
-    serviceBandBottom + 170,
+    serviceBandBottom + 210,
     SECONDARY_WIDTH,
     36,
     1500
@@ -203,7 +206,7 @@ function buildStructuredPositions(
     graph.nodes.filter((node) => node.type === "saas"),
     dependencyTargets,
     positions,
-    serviceBandBottom + 270,
+    serviceBandBottom + 324,
     SECONDARY_WIDTH,
     36,
     1500
@@ -213,7 +216,7 @@ function buildStructuredPositions(
     graph.nodes.filter((node) => node.type === "external"),
     dependencyTargets,
     positions,
-    serviceBandBottom + 370,
+    serviceBandBottom + 438,
     SECONDARY_WIDTH,
     36,
     1500
@@ -223,7 +226,7 @@ function buildStructuredPositions(
     graph.nodes.filter((node) => node.type === "library" && !positions.has(node.id)),
     dependencyTargets,
     positions,
-    serviceBandTop - 120,
+    serviceBandTop - 132,
     SECONDARY_WIDTH,
     36,
     1500
@@ -313,8 +316,8 @@ function placeBandNodes(
 ) {
   if (nodes.length === 0) return;
 
-  const gap = 24;
-  const rowGap = height + 24;
+  const gap = 28;
+  const rowGap = height + 26;
   const sorted = [...nodes].sort((left, right) => (targets.get(left.id) ?? 0) - (targets.get(right.id) ?? 0));
 
   let rowIndex = 0;
@@ -392,8 +395,8 @@ function buildFlowGraph(graph: DependencyGraph, positions: Map<string, { x: numb
         data: { label: buildNodeLabel(node), node },
         type: "default",
         style: {
-          background: isService ? "#FFFFFF" : `${cfg.color}12`,
-          border: `${isService ? "1.5px" : "1px"} solid ${cfg.color}${isService ? "" : "55"}`,
+          background: "rgba(255,255,255,0.96)",
+          border: `${isService ? "1.5px" : "1px"} solid ${cfg.color}${isService ? "7A" : "42"}`,
           borderRadius,
           color: "#1A0F08",
           fontSize: isService ? "12px" : "11px",
@@ -402,10 +405,12 @@ function buildFlowGraph(graph: DependencyGraph, positions: Map<string, { x: numb
           width,
           height,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 12px",
-          boxShadow: isService ? "0 2px 8px rgba(26,15,8,0.08)" : "none",
+          alignItems: "stretch",
+          justifyContent: "stretch",
+          padding: "0",
+          boxShadow: isService
+            ? `0 18px 32px ${cfg.color}12, 0 2px 10px rgba(26,15,8,0.05)`
+            : `0 12px 26px ${cfg.color}0F, 0 2px 8px rgba(26,15,8,0.04)`,
         },
       };
     })
@@ -439,7 +444,7 @@ function compactLayoutHorizontally(graph: dagre.graphlib.Graph) {
   const maxX = Math.max(...xs);
   const width = maxX - minX;
 
-  const targetWidth = 2600;
+  const targetWidth = 2800;
   if (width <= targetWidth) return;
 
   const scale = targetWidth / width;
@@ -453,21 +458,65 @@ function compactLayoutHorizontally(graph: dagre.graphlib.Graph) {
 
 function buildNodeLabel(node: GraphNode): React.ReactNode {
   const cfg = NODE_CONFIGS[node.type] ?? NODE_CONFIGS.service;
+  const tag = node.framework ?? (node.type === "service" ? "service" : cfg.label);
+  const subtleStack = node.techStack?.slice(0, 1)[0];
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.3, gap: "1px" }}>
-      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "140px" }}>{node.name}</span>
-      {(node.framework || node.type !== "service") && (
-        <span style={{
-          fontSize: "9px",
-          color: cfg.color,
-          fontWeight: 400,
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          opacity: 0.8,
-        }}>
-          {node.framework ?? node.type}
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "10px 12px 11px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "10px" }}>
+        <span
+          style={{
+            width: "7px",
+            height: "7px",
+            borderRadius: "999px",
+            background: cfg.color,
+            boxShadow: `0 0 0 4px ${cfg.color}14`,
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontSize: "9px",
+            color: cfg.color,
+            fontWeight: 500,
+            background: `${cfg.color}10`,
+            border: `1px solid ${cfg.color}18`,
+            borderRadius: "999px",
+            padding: "2px 7px",
+            textTransform: "capitalize",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "118px",
+          }}
+        >
+          {tag}
         </span>
-      )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: node.type === "service" ? "13px" : "12px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: "170px",
+          }}
+        >
+          {node.name}
+        </span>
+        <span
+          style={{
+            fontSize: "10px",
+            color: "rgba(26,15,8,0.34)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {cfg.label}
+          {subtleStack ? ` · ${subtleStack}` : ""}
+        </span>
+      </div>
     </div>
   );
 }
@@ -573,6 +622,21 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
   const dbCount = displayGraph.nodes.filter((node) => node.type === "database").length;
   const saasCount = displayGraph.nodes.filter((node) => node.type === "saas").length;
   const externalCount = displayGraph.nodes.filter((node) => node.type === "external").length;
+  const languages = Object.entries(graph.meta.language_breakdown ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([language]) => language)
+    .join(" · ");
+  const confidenceScore = graph.edges.length
+    ? Math.round(
+        (((graph.edges.filter((edge) => edge.confidence === "high").length * 1) +
+          (graph.edges.filter((edge) => edge.confidence === "medium").length * 0.72) +
+          (graph.edges.filter((edge) => edge.confidence === "low").length * 0.38)) /
+          graph.edges.length) *
+          100
+      )
+    : 100;
+  const repoLabel = graph.meta.repo || "Current repo";
 
   const legendEntries = Object.entries(NODE_CONFIGS).filter(([type]) => {
     if (type === "service") return serviceCount > 0;
@@ -584,21 +648,97 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
 
   return (
     <div style={{ flex: 1, display: "flex", background: "#FAF8F5", minHeight: 0 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ width: "100%", minWidth: 0 }}>
+        <div
+          style={{
+            position: "relative",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.92))",
+            borderTop: "1px solid rgba(26,15,8,0.08)",
+            borderBottom: "1px solid rgba(26,15,8,0.08)",
+            overflow: "hidden",
+            boxShadow: "none",
+            minHeight: "780px",
+          }}
+        >
+          <div
+            style={{
+              height: "58px",
+              borderBottom: "1px solid rgba(26,15,8,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "18px",
+              padding: "0 20px",
+              background: "rgba(255,255,255,0.78)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "999px", background: "#27AE60", boxShadow: "0 0 0 4px rgba(39,174,96,0.14)" }} />
+              <span style={{ fontSize: "0.76rem", color: "rgba(26,15,8,0.38)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Live
+              </span>
+              <span style={{ fontSize: "0.9rem", color: "#1A0F08", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "440px" }}>
+                {repoLabel}
+              </span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <span style={{ fontSize: "0.8rem", color: "rgba(26,15,8,0.42)" }}>
+                {serviceCount} services · {displayGraph.edges.length} edges
+              </span>
+              <span
+                style={{
+                  fontSize: "0.76rem",
+                  color: "#E8754A",
+                  background: "rgba(232,117,74,0.09)",
+                  border: "1px solid rgba(232,117,74,0.18)",
+                  borderRadius: "999px",
+                  padding: "6px 11px",
+                }}
+              >
+                {isLargeGraph ? "Large graph" : "Mapped"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              position: "absolute",
+              inset: "58px 0 42px 0",
+              background:
+                "radial-gradient(circle at 50% 38%, rgba(232,117,74,0.10), transparent 22%), radial-gradient(circle at 52% 46%, rgba(124,111,224,0.06), transparent 34%)",
+            }}
+          />
+
+          <div style={{ position: "relative", height: "660px" }}>
         <ReactFlow
           nodes={visibleNodes}
           edges={visibleEdges}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           fitView
-          fitViewOptions={{ padding: 0.22 }}
+          fitViewOptions={{ padding: 0.24, minZoom: 0.18, maxZoom: 1.35 }}
           attributionPosition="bottom-right"
         >
-          <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(26,15,8,0.08)" />
-          <Controls style={{ background: "#fff", border: "1px solid rgba(26,15,8,0.1)", borderRadius: "10px", boxShadow: "0 2px 8px rgba(26,15,8,0.08)" }} />
+          <Background variant={BackgroundVariant.Dots} gap={30} size={1} color="rgba(26,15,8,0.07)" />
+          <Controls
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "1px solid rgba(26,15,8,0.1)",
+              borderRadius: "14px",
+              boxShadow: "0 10px 28px rgba(26,15,8,0.08)",
+              overflow: "hidden",
+            }}
+          />
           <MiniMap
             nodeColor={(node) => NODE_CONFIGS[(node.data?.node as GraphNode)?.type ?? "service"]?.color ?? "#E8754A"}
-            style={{ background: "#fff", border: "1px solid rgba(26,15,8,0.1)", borderRadius: "10px" }}
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "1px solid rgba(26,15,8,0.1)",
+              borderRadius: "16px",
+              boxShadow: "0 12px 30px rgba(26,15,8,0.08)",
+            }}
           />
 
           <Panel position="top-left">
@@ -606,12 +746,12 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
               display: "flex",
               flexDirection: "column",
               gap: "10px",
-              background: "rgba(255,255,255,0.9)",
+              background: "rgba(255,255,255,0.92)",
               border: "1px solid rgba(26,15,8,0.09)",
-              borderRadius: "12px",
-              padding: "10px",
-              boxShadow: "0 1px 4px rgba(26,15,8,0.06)",
-              minWidth: "214px",
+              borderRadius: "16px",
+              padding: "12px",
+              boxShadow: "0 14px 34px rgba(26,15,8,0.08)",
+              minWidth: "240px",
             }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
                 <span style={{ fontSize: "0.7rem", color: "rgba(26,15,8,0.35)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -650,8 +790,8 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
                       border: focusMode === mode.id ? "1px solid rgba(232,117,74,0.24)" : "1px solid rgba(26,15,8,0.08)",
                       background: focusMode === mode.id ? "rgba(232,117,74,0.08)" : "#fff",
                       color: !selectedNode && mode.id !== "full" ? "rgba(26,15,8,0.24)" : focusMode === mode.id ? "#E8754A" : "rgba(26,15,8,0.55)",
-                      borderRadius: "8px",
-                      padding: "7px 9px",
+                      borderRadius: "14px",
+                      padding: "8px 10px",
                       cursor: !selectedNode && mode.id !== "full" ? "not-allowed" : "pointer",
                       fontSize: "0.75rem",
                       fontWeight: 500,
@@ -711,11 +851,11 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
           {legendEntries.length > 0 && (
             <Panel position="bottom-left">
               <div style={{
-                background: "#fff",
+                background: "rgba(255,255,255,0.92)",
                 border: "1px solid rgba(26,15,8,0.09)",
-                borderRadius: "10px",
+                borderRadius: "14px",
                 padding: "10px 14px",
-                boxShadow: "0 1px 4px rgba(26,15,8,0.06)",
+                boxShadow: "0 14px 34px rgba(26,15,8,0.08)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "6px",
@@ -736,9 +876,9 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
                 width: "300px",
                 background: "rgba(255,255,255,0.92)",
                 border: "1px solid rgba(26,15,8,0.09)",
-                borderRadius: "12px",
+                borderRadius: "16px",
                 padding: "12px 13px",
-                boxShadow: "0 6px 24px rgba(26,15,8,0.1)",
+                boxShadow: "0 14px 34px rgba(26,15,8,0.1)",
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
                   <span style={{ fontSize: "0.72rem", color: "rgba(26,15,8,0.36)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -752,7 +892,7 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
                   </button>
                 </div>
                 <div style={{ fontSize: "0.84rem", color: "#1A0F08", fontWeight: 600, marginBottom: "6px", lineHeight: 1.45 }}>
-                  {selectedEdge.sourceName} → {selectedEdge.targetName}
+                  {selectedEdge.sourceName} to {selectedEdge.targetName}
                 </div>
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
                   <Tag text={selectedEdge.edge.type} accent={edgeAccent(selectedEdge.edge.type)} />
@@ -772,6 +912,31 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
             </Panel>
           )}
         </ReactFlow>
+          </div>
+
+          <div
+            style={{
+              height: "42px",
+              borderTop: "1px solid rgba(26,15,8,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              padding: "0 18px",
+              background: "rgba(255,255,255,0.78)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap", minWidth: 0 }}>
+              <FooterMeta label="Last scan" value={timeAgo(graph.meta.scanned_at)} />
+              {languages && <FooterMeta label="Languages" value={languages} />}
+              <FooterMeta label="Confidence" value={`${confidenceScore}%`} />
+            </div>
+            <div style={{ fontSize: "0.76rem", color: "rgba(26,15,8,0.36)" }}>
+              {dbCount} data stores · {externalCount + saasCount} dependencies
+            </div>
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -779,6 +944,17 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
           <NodeDetailPanel node={selectedNode} graph={displayGraph} onClose={() => setSelectedNode(null)} />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function FooterMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <span style={{ fontSize: "0.68rem", color: "rgba(26,15,8,0.32)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: "0.78rem", color: "rgba(26,15,8,0.58)" }}>{value}</span>
     </div>
   );
 }
