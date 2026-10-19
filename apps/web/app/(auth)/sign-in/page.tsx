@@ -11,19 +11,19 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const supabase = createSupabaseBrowserClient();
+  const getSupabase = () => createSupabaseBrowserClient();
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setLoading(false); }
     else window.location.href = "/dashboard";
   }
 
   async function handleGitHub() {
-    await supabase.auth.signInWithOAuth({
+    await getSupabase().auth.signInWithOAuth({
       provider: "github",
       options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: "repo read:org" },
     });

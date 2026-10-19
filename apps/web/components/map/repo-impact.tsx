@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { DependencyGraph } from "@trailmap/scanner";
 import { ArrowRightLeft, Database, FileCode2, GitBranch, GitCommitHorizontal, GitPullRequest, Loader2, RadioTower, Search, Sparkles, TriangleAlert, Zap } from "lucide-react";
-import { buildGraphImpactAnalysis, buildPrImpactAnalysis, type ImpactServiceItem, type PrImpactAnalysis } from "@/lib/graph-impact";
+import { buildGraphImpactAnalysis, type ImpactServiceItem, type PrImpactAnalysis } from "@/lib/graph-impact";
 
 const shellStyle = {
   width: "100%",

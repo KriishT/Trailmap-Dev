@@ -5,10 +5,11 @@
   "bin": {
     "trailmap": "./dist/bin.js"
   },
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/bin.ts src/index.ts --format esm --dts --banner.js '#!/usr/bin/env node'",
+    "build": "tsup",
     "dev": "tsup src/bin.ts --format esm --watch",
     "lint": "eslint src/",
     "check-types": "tsc --noEmit"
@@ -20,6 +21,7 @@
     "ora": "^8.1.1"
   },
   "devDependencies": {
+    "@trailmap/eslint-config": "*",
     "@trailmap/typescript-config": "*",
     "@types/node": "^22.0.0",
     "tsup": "^8.3.5",

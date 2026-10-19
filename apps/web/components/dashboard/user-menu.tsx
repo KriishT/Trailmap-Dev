@@ -9,10 +9,10 @@ import { motion, AnimatePresence } from "framer-motion";
 export function UserMenu({ email, avatarUrl }: { email: string; avatarUrl?: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const supabase = createSupabaseBrowserClient();
+  const getSupabase = () => createSupabaseBrowserClient();
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     router.push("/");
   }
 

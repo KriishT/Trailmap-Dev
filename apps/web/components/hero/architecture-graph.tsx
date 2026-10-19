@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const NODES = [
   { id: "api",     label: "api-gateway",       lang: "Go",         x: 320, y: 80,  color: "#E8754A", type: "service" },

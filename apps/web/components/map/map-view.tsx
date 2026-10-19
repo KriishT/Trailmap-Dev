@@ -321,7 +321,7 @@ function placeBandNodes(
   const sorted = [...nodes].sort((left, right) => (targets.get(left.id) ?? 0) - (targets.get(right.id) ?? 0));
 
   let rowIndex = 0;
-  let rowStartX = -maxRowWidth / 2;
+  const rowStartX = -maxRowWidth / 2;
   let cursorX = rowStartX;
   let rowNodes: Array<{ node: GraphNode; targetX: number }> = [];
 
@@ -963,7 +963,6 @@ function condenseGraph(graph: DependencyGraph): DependencyGraph {
 
     if (nodesOfType.length <= MAX_VISIBLE_DEPENDENCIES_PER_TYPE + 3) continue;
 
-    const visible = nodesOfType.slice(0, MAX_VISIBLE_DEPENDENCIES_PER_TYPE);
     const hidden = nodesOfType.slice(MAX_VISIBLE_DEPENDENCIES_PER_TYPE);
     hidden.forEach((node) => hiddenIds.add(node.id));
 

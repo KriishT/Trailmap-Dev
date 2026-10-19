@@ -1,20 +1,36 @@
-﻿import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { PageTransition } from "@/components/providers/page-transition";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  style: ["normal", "italic"],
+const plexSans = localFont({
+  variable: "--font-body",
+  display: "swap",
+  src: [
+    { path: "./fonts/ibm-plex-sans-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/ibm-plex-sans-latin-500-normal.woff2", weight: "500" },
+    { path: "./fonts/ibm-plex-sans-latin-600-normal.woff2", weight: "600" },
+    { path: "./fonts/ibm-plex-sans-latin-700-normal.woff2", weight: "700" },
+  ],
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["300", "400", "500", "600"],
+const plexMono = localFont({
+  variable: "--font-mono",
+  display: "swap",
+  src: [
+    { path: "./fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500" },
+  ],
+});
+
+const plexCondensed = localFont({
+  variable: "--font-display",
+  display: "swap",
+  src: [
+    { path: "./fonts/ibm-plex-sans-condensed-latin-500-normal.woff2", weight: "500" },
+    { path: "./fonts/ibm-plex-sans-condensed-latin-600-normal.woff2", weight: "600" },
+  ],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable}`}>
       <body>
         <ReactQueryProvider>
           <PageTransition>{children}</PageTransition>

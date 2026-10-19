@@ -12,19 +12,19 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const supabase = createSupabaseBrowserClient();
+  const getSupabase = () => createSupabaseBrowserClient();
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+    const { error } = await getSupabase().auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
     if (error) { setError(error.message); setLoading(false); }
     else setSent(true);
   }
 
   async function handleGitHub() {
-    await supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: "repo read:org" } });
+    await getSupabase().auth.signInWithOAuth({ provider: "github", options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: "repo read:org" } });
   }
 
   if (sent) {

@@ -39,6 +39,7 @@
     "three": "^0.175.0"
   },
   "devDependencies": {
+    "@trailmap/eslint-config": "*",
     "@trailmap/typescript-config": "*",
     "@types/dagre": "^0.7.52",
     "@types/node": "^22.0.0",

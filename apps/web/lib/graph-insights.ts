@@ -76,7 +76,12 @@ export function buildGraphInsights(graph: DependencyGraph): GraphInsights {
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
-    .map(({ score: _score, ...rest }) => rest);
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      riskLevel: item.riskLevel,
+      blastRadius: item.blastRadius,
+    }));
 
   const inferredEdgeCount = graph.edges.filter((edge) => edge.confidence !== "high").length;
   const highConfidenceEdgeCount = graph.edges.length - inferredEdgeCount;
