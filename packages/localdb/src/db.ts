@@ -37,6 +37,15 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authen
 GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
 `;
 
+/** PostgREST returns timestamps as ISO strings and dates as YYYY-MM-DD; match it so app code sees the same shapes. */
+const timestamp = (v: string): string => {
+  let t = v.replace(" ", "T");
+  if (/[+-]\d\d$/.test(t)) t += ":00";
+  else if (!/(Z|[+-]\d\d:\d\d)$/.test(t)) t += "Z";
+  return new Date(t).toISOString();
+};
+const PARSERS = { 1184: timestamp, 1114: timestamp, 1082: (v: string) => v };
+
 /** Find supabase/migrations by walking up from the working directory. */
 export function findMigrationsDir(): string {
   let dir = process.cwd();
@@ -73,14 +82,14 @@ export async function createLocalDb(options: CreateOptions = {}): Promise<LocalD
   return {
     pg,
     async admin(sql, params) {
-      const res = await pg.query(sql, params);
+      const res = await pg.query(sql, params, { parsers: PARSERS });
       return res.rows as never;
     },
     async as(role, userId, sql, params) {
       return pg.transaction(async (tx) => {
         await tx.exec(`SET LOCAL ROLE ${role}`);
         await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [userId ?? ""]);
-        const res = await tx.query(sql, params);
+        const res = await tx.query(sql, params, { parsers: PARSERS });
         return res.rows as never;
       });
     },

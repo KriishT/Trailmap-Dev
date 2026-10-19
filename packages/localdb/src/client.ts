@@ -3,7 +3,7 @@ import type { LocalDb, Role } from "./db.js";
 /**
  * A tiny supabase-js look-alike that runs against the pglite test database, so route
  * handlers can be exercised with real row-level security. It supports only what the
- * app uses: from().select/insert/update/upsert + eq/in/not/order/limit + single/maybeSingle,
+ * app uses: from().select/insert/update/upsert/delete + eq/in/not/order/limit + single/maybeSingle,
  * rpc(), and auth.getUser().
  */
 
@@ -11,7 +11,7 @@ type Filter = { col: string; op: "=" | "in" | "not in" | "is" | "<" | "@>"; val:
 type Result = { data: unknown; error: { message: string } | null };
 
 class Query implements PromiseLike<Result> {
-  private mode: "select" | "insert" | "update" | "upsert" = "select";
+  private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private cols = "*";
   private filters: Filter[] = [];
   private orderBy?: { col: string; asc: boolean };
@@ -45,6 +45,10 @@ class Query implements PromiseLike<Result> {
     this.mode = "upsert";
     this.payload = row;
     this.conflict = opts?.onConflict;
+    return this;
+  }
+  delete() {
+    this.mode = "delete";
     return this;
   }
   eq(col: string, val: unknown) {
@@ -94,7 +98,7 @@ class Query implements PromiseLike<Result> {
   }
 
   private returnCols(): string {
-    return this.returning ? this.cols : "id";
+    return this.returning ? this.cols : "1 AS ok";
   }
 
   private whereSql(params: unknown[]): string {
@@ -132,6 +136,11 @@ class Query implements PromiseLike<Result> {
       const ord = this.orderBy ? ` ORDER BY "${this.orderBy.col}" ${this.orderBy.asc ? "ASC" : "DESC"}` : "";
       const lim = this.limitN ? ` LIMIT ${this.limitN}` : "";
       return { sql: `SELECT ${this.cols} FROM ${this.table}${where}${ord}${lim}`, params };
+    }
+
+    if (this.mode === "delete") {
+      const where = this.whereSql(params);
+      return { sql: `DELETE FROM ${this.table}${where} RETURNING ${this.returnCols()}`, params };
     }
 
     if (this.mode === "update") {

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { requireRepoAccess } from "@/lib/authz";
 import { loadWorkspace } from "@/lib/workspace/load";
 import { buildExport, isIsoDate, type ExportFormat } from "@/lib/workspace/export";
@@ -13,11 +13,11 @@ const SHEETS = new Set<SheetKind>(["system", "data-flow", "network"]);
  * Download an evidence export. Every export is recorded with the hash of the file and of the
  * graph it was made from, so a file in an assessor's hands can be matched to this record.
  */
-export async function GET(req: NextRequest, { params }: { params: Promise<{ repoId: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ repoId: string }> }) {
   const { repoId } = await params;
   const access = await requireRepoAccess(repoId);
   if (!access.ok) return access.response;
-  const q = req.nextUrl.searchParams;
+  const q = new URL(req.url).searchParams;
 
   const format = (q.get("format") ?? "pdf") as ExportFormat;
   const sheet = (q.get("sheet") ?? "system") as SheetKind;

@@ -32,7 +32,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ repoId: 
       if (error) return NextResponse.json({ error: "Only organisation owners and admins can change scopes" }, { status: 403 });
     }
     for (const id of [...have].filter((x) => !wanted.includes(x))) {
-      await access.supabase.from("scope_members").delete().eq("scope_id", scopeId).eq("node_id", id);
+      // Row-level security hides rows from non-admins instead of erroring, so check something was removed.
+      const { data: removed } = await access.supabase.from("scope_members").delete().eq("scope_id", scopeId).eq("node_id", id).select("node_id");
+      if (!removed?.length) return NextResponse.json({ error: "Only organisation owners and admins can change scopes" }, { status: 403 });
     }
   }
   return NextResponse.json({ ok: true });
