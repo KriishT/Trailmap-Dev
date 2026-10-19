@@ -1,0 +1,14 @@
+# These files contain deliberately fake credentials: the scanner's redaction is tested by feeding it
+# secret-shaped strings, and the demo repository includes a placeholder Stripe key so the sample
+# shows redaction working. None is a real credential.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake credentials used as test and demo data"
+paths = [
+  '''packages/scanner/fixtures/''',
+  '''packages/scanner/src/.*\.test\.ts''',
+  '''apps/web/lib/demo/build\.ts''',
+  '''apps/web/lib/demo/demo-data\.json''',
+]

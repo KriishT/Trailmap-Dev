@@ -26,6 +26,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Client bundle has no server secrets
+        run: node scripts/check-client-bundle.mjs
+
       - name: Type check
         run: npm run check-types
 
@@ -42,6 +45,37 @@ jobs:
       - name: Scanner eval
         run: npm run eval
 
+      - name: Coverage gates
+        run: npm run test:coverage
+
+  # End to end: the production build in local mode (embedded Postgres, mocked GitHub), driven by a
+  # real browser. Covers the sample workspace, scope editor, export, share links, PR drift, onboarding
+  # and axe accessibility checks in both themes, plus screenshots at 1440 and 768 pixels.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+        env:
+          TRAILMAP_LOCAL: "1"
+      - run: npm run e2e
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-and-screenshots
+          path: |
+            playwright-report/
+            docs/screenshots/
+
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -53,7 +87,6 @@ jobs:
       - run: npm ci
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
-        continue-on-error: true # becomes blocking once the baseline is clean (tracked in PROGRESS.md)
 
   secrets:
     runs-on: ubuntu-latest
