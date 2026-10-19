@@ -26,4 +26,4 @@
 - Removed the three.js hero, React Flow map, Tailwind and shadcn styling, and the legacy impact routes in favour of the drift pipeline.
 
 ### Security
-- Production dependency audit reduced from 29 vulnerabilities (4 critical) to 1 moderate (`qs`, transitive).
+- Production dependency audit reduced from 29 vulnerabilities to 1 moderate (`qs`, transitive).

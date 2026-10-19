@@ -82,11 +82,33 @@ Not done yet in Phase 1:
 
 Tests: 324 passing (DB isolation incl. every compliance table, route authorization, webhook fixtures, PR check flow, CLI end-to-end against the built binary and real git, MCP via the SDK's in-memory transport, integrations via msw).
 
+## Phase 4: Evidence workspace (DONE)
+
+- Server: `lib/workspace/{load,export,scene,inspect,client-data}.ts`; routes for export, scene, scopes, overrides (create and revoke), vendors, policy; sample data in `lib/demo/` (committed `demo-data.json`, a test checks it equals the generator's output).
+- UI: `components/workspace/*` (sheet viewer with inspector, keyboard navigation, scope editor with click/shift-click/lasso, vendors, revisions with time travel, review queue with j/k/a keys, export preview with title block, share links, settings and API keys, command palette), onboarding checklist on the dashboard, `/demo` without sign-in, share view at `/map/[slug]`.
+- Found by the browser tests and fixed: the proxy blocked the share-link unlock route for signed-out visitors; a race in the sheet fetch could store an empty response after an abort and crash the page; stale `dist` of `localdb` was served until rebuilt (always `npm run build` before `next start`).
+
+## Phase 5: Survey sheet design system (DONE)
+
+- `packages/ui`: tokens (drafting paper and blueprint), components on Radix, IBM Plex Sans / Mono / Sans Condensed self-hosted, no inline-style theming, square corners, no gradients, glow or glass. Removed three.js, React Flow, dagre, framer-motion, Tailwind, the hero and starter files.
+- Landing page shows the real product: the system sheet and revision list, drift finding, CLI output and evidence footnote are generated from the sample data.
+- Axe (WCAG 2.2 AA plus best practice), zero serious or critical on the landing page, sign-in, every sample tab, dashboard, repository workspace tabs, export preview, share gate and shared view, in both themes. Screenshots at 1440 and 768 in both themes are in `docs/screenshots/` and were looked at.
+
+## Phase 6: Docs (DONE)
+
+README, `.env.example` files, SECURITY.md, ARCHITECTURE.md, CHANGELOG.md, `docs/accuracy.md` (generated), `docs/performance.md`.
+
+## Verification (from a clean install)
+
+See the final report. Test suites: vitest (unit, DB isolation, route authorization), eval gate, Playwright (demo, workspace, PR drift, onboarding, axe, responsive).
+
 ## Still open
-- `apps/web/lib` legacy files (graph-diff, graph-impact, graph-insights, github-pr-impact) have little test coverage; they feed the old UI and are replaced in Phase 4/5. Coverage gate for `apps/web/lib` will be met after that.
-- Gitleaks over full history not yet run locally (CI job exists).
+- `docker compose up` not verifiable on this machine (no Docker installed).
 - True multi-connection claim test needs real Postgres (CI service).
-- `docker compose up` not verifiable on this machine (no Docker).
+- Integrations delivery code is not called from any route yet.
+- Screenshots were reviewed by eye on one machine; the Lighthouse run used mobile emulation against a local server.
 
 ## Next
-Phase 4: evidence workspace (demo mode, onboarding, sheets, export, share UI). Phase 5: design system. Phase 6: docs.
+1. Wire `packages/integrations` to an export-delivery route and a settings screen.
+2. Concurrent claim test on a real Postgres service container in CI.
+3. Measure scanner accuracy on real, third-party repositories (not authored with the scanner) and publish the numbers.
