@@ -2,6 +2,8 @@ import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
 import { supabaseAdmin } from "./supabase-server";
 import { buildPrImpactAnalysis, type PrImpactAnalysis } from "./graph-impact";
+import type { DependencyGraph } from "@trailmap/graph";
+import { readSnapshotGraph } from "./graph-read";
 import { matchOwnersForPath, parseCodeowners, type CodeownersRule } from "./codeowners";
 
 const TRAILMAP_PR_COMMENT_MARKER = "<!-- trailmap-pr-impact -->";
@@ -13,7 +15,7 @@ interface RepoImpactContext {
   installationId: number;
   snapshotId: string;
   snapshotCommit: string | null;
-  graph: any;
+  graph: DependencyGraph;
 }
 
 export async function getRepoImpactContext(repoId: string): Promise<
@@ -52,6 +54,9 @@ export async function getRepoImpactContext(repoId: string): Promise<
     return { ok: false, error: "No graph snapshot found for this repo", status: 404 };
   }
 
+  const graph = readSnapshotGraph(snapshot.raw_json);
+  if (!graph) return { ok: false, error: "Stored graph snapshot is unreadable", status: 500 };
+
   return {
     ok: true,
     context: {
@@ -61,7 +66,7 @@ export async function getRepoImpactContext(repoId: string): Promise<
       installationId: org.github_installation_id,
       snapshotId: snapshot.id,
       snapshotCommit: snapshot.commit_sha,
-      graph: snapshot.raw_json,
+      graph,
     },
   };
 }

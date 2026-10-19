@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { RepoList } from "@/components/dashboard/repo-list";
+import { RepoList, type RepoSummary } from "@/components/dashboard/repo-list";
 import { ConnectGitHubButton } from "@/components/dashboard/connect-github-button";
 import { SyncReposButton } from "@/components/dashboard/sync-repos-button";
 
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
       </div>
 
       {repos && repos.length > 0 ? (
-        <RepoList repos={repos as any} />
+        <RepoList repos={repos as unknown as RepoSummary[]} />
       ) : (
         <div style={{
           border: "1.5px dashed rgba(26,15,8,0.12)",

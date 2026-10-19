@@ -7,7 +7,7 @@ import type { Role, TestDb } from "./db";
  * rpc(), and auth.getUser().
  */
 
-type Filter = { col: string; op: "=" | "in" | "not in" | "is"; val: unknown };
+type Filter = { col: string; op: "=" | "in" | "not in" | "is" | "<"; val: unknown };
 type Result = { data: unknown; error: { message: string } | null };
 
 class Query implements PromiseLike<Result> {
@@ -55,6 +55,10 @@ class Query implements PromiseLike<Result> {
     this.filters.push({ col, op: "in", val });
     return this;
   }
+  lt(col: string, val: unknown) {
+    this.filters.push({ col, op: "<", val });
+    return this;
+  }
   is(col: string, val: null) {
     this.filters.push({ col, op: "is", val });
     return this;
@@ -96,6 +100,10 @@ class Query implements PromiseLike<Result> {
         return `"${f.col}" = $${params.length}`;
       }
       if (f.op === "is") return `"${f.col}" IS NULL`;
+      if (f.op === "<") {
+        params.push(f.val);
+        return `"${f.col}" < $${params.length}`;
+      }
       if (f.op === "in") {
         params.push(f.val);
         return `"${f.col}" = ANY($${params.length})`;

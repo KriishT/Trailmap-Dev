@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase";
 import { LogOut, User } from "lucide-react";
@@ -20,6 +20,7 @@ export function UserMenu({ email, avatarUrl }: { email: string; avatarUrl?: stri
     <div style={{ position: "relative" }}>
       <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>
         {avatarUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- remote GitHub avatar at a fixed 30px */
           <img src={avatarUrl} alt="avatar" style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1.5px solid rgba(26,15,8,0.12)" }} />
         ) : (
           <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: "rgba(232,117,74,0.1)", border: "1.5px solid rgba(232,117,74,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>

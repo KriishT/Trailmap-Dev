@@ -1,41 +1,49 @@
 ﻿import "dotenv/config";
-import { runScanJob } from "./scan-job.js";
+import { scan } from "@trailmap/scanner";
+import {
+  defaultCloner,
+  defaultTempDir,
+  processNextJob,
+  type PipelineDeps,
+} from "@trailmap/pipeline";
 import { getDb } from "./db.js";
+import { githubPort } from "./github-client.js";
 
 const POLL_INTERVAL_MS = 5000;
-let isRunning = false;
+let busy = false;
 
-async function pollAndProcess() {
-  if (isRunning) return;
-  isRunning = true;
+function buildDeps(): PipelineDeps {
+  return {
+    db: getDb(),
+    github: githubPort,
+    cloner: defaultCloner,
+    tempDir: defaultTempDir,
+    scan,
+  };
+}
 
-  const db = getDb();
+async function tick() {
+  if (busy) return;
+  busy = true;
   try {
-    // Pick up one pending scan at a time
-    const { data: pending } = await db
-      .from("scan_logs")
-      .select("id, repo_id")
-      .eq("status", "pending")
-      .is("started_at", null)
-      .order("created_at", { ascending: true })
-      .limit(1);
-
-    if (!pending?.length) return;
-
-    const log = pending[0];
-    if (!log) return;
-    console.log(`[worker] Processing scan ${log.id} for repo ${log.repo_id}`);
-
-    await runScanJob({ scanLogId: log.id, repoId: log.repo_id });
-    console.log(`[worker] Completed scan ${log.id}`);
+    // Drain the queue: keep going while there is work, then wait for the next poll.
+    for (;;) {
+      const outcome = await processNextJob(buildDeps());
+      if (outcome.status === "idle") break;
+      if (outcome.status === "completed") {
+        console.log(`[worker] scan ${outcome.scanLogId} completed (snapshot ${outcome.snapshotId})`);
+      } else {
+        console.error(`[worker] scan ${outcome.scanLogId} failed: ${outcome.error}`);
+      }
+    }
   } catch (err) {
-    console.error("[worker] Error:", err);
+    console.error("[worker] error:", err instanceof Error ? err.message : err);
   } finally {
-    isRunning = false;
+    busy = false;
   }
 }
 
-setInterval(pollAndProcess, POLL_INTERVAL_MS);
-pollAndProcess(); // run immediately on start
+setInterval(tick, POLL_INTERVAL_MS);
+void tick();
 
-console.log("[worker] Trailmap worker started — polling every 5s");
+console.log(`[worker] Trailmap worker started, polling every ${POLL_INTERVAL_MS / 1000}s`);

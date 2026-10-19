@@ -1,3 +1,4 @@
+import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -19,7 +20,7 @@ export async function createSupabaseServerClient() {
         setAll: (cookiesToSet: CookieMutation[]) => {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options as any)
+              cookieStore.set(name, value, options as CookieOptions)
             );
           } catch {
             // Server components cannot always mutate cookies

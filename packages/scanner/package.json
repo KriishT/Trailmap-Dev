@@ -19,6 +19,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@trailmap/graph": "*",
     "glob": "^11.0.0",
     "js-yaml": "^4.1.0",
     "fast-xml-parser": "^5.7.2"

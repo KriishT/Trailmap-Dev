@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/errors";
 
 import Link from "next/link";
 import { Clock3, GitBranch, Lock, RefreshCw, Loader2, ArrowUpRight } from "lucide-react";
@@ -14,7 +15,7 @@ interface Snapshot {
   scanned_at: string;
 }
 
-interface Repo {
+export interface RepoSummary {
   id: string;
   name: string;
   full_name: string;
@@ -24,7 +25,7 @@ interface Repo {
   graph_snapshots: Snapshot[];
 }
 
-export function RepoList({ repos }: { repos: Repo[] }) {
+export function RepoList({ repos }: { repos: RepoSummary[] }) {
   const [scanState, setScanState] = useState<Record<string, "idle" | "scanning" | "error">>({});
   const [scanMsg, setScanMsg] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -84,9 +85,9 @@ export function RepoList({ repos }: { repos: Repo[] }) {
 
       setScanMsg((state) => ({ ...state, [repoId]: "Scan is running. We'll update this card when it finishes..." }));
       void waitForScan(repoId, data.scanLogId);
-    } catch (e: any) {
+    } catch (e) {
       setScanState((state) => ({ ...state, [repoId]: "error" }));
-      setScanMsg((state) => ({ ...state, [repoId]: e.message || "Scan failed" }));
+      setScanMsg((state) => ({ ...state, [repoId]: errorMessage(e, "Scan failed") }));
     }
   }
 

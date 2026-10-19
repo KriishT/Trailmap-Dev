@@ -3,7 +3,12 @@ import * as path from "node:path";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": path.resolve(__dirname, "apps/web") },
+    alias: {
+      "@": path.resolve(__dirname, "apps/web"),
+      "@trailmap/graph": path.resolve(__dirname, "packages/graph/src/index.ts"),
+      "@trailmap/scanner": path.resolve(__dirname, "packages/scanner/src/index.ts"),
+      "@trailmap/pipeline": path.resolve(__dirname, "packages/pipeline/src/index.ts"),
+    },
   },
   test: {
     include: [

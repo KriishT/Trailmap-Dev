@@ -1,0 +1,34 @@
+{
+  "name": "@trailmap/pipeline",
+  "version": "0.1.0",
+  "description": "The only scan executor: claim a job, clone, scan, snapshot, clean up",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "@trailmap/graph": "*",
+    "@trailmap/scanner": "*",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@trailmap/eslint-config": "*",
+    "@trailmap/typescript-config": "*",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.2"
+  }
+}

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@trailmap/scanner"],
+  transpilePackages: ["@trailmap/scanner", "@trailmap/graph"],
   serverExternalPackages: ["simple-git", "glob", "js-yaml", "fast-xml-parser"],
   experimental: {
     serverActions: { allowedOrigins: ["localhost:3000"] },

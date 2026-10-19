@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { supabasePublic } from "@/lib/supabase-public";
+import { readSnapshotGraph } from "@/lib/graph-read";
 import { MapView } from "@/components/map/map-view";
 
 export default async function PublicMapPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -19,6 +20,8 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
   }
 
   const snapshot = shared;
+  const graph = readSnapshotGraph(shared.raw_json);
+  if (!graph) notFound();
   const repoName = shared.repo_full_name ?? "Unknown repo";
 
   return (
@@ -35,7 +38,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
         </span>
       </header>
       <div className="flex-1 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
-        <MapView graph={snapshot.raw_json as any} />
+        <MapView graph={graph} />
       </div>
     </div>
   );

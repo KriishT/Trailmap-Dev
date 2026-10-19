@@ -59,7 +59,7 @@ function isExternalImport(source: string, language: Language): boolean {
   if (source.startsWith(".") || source.startsWith("/")) return false;
 
   switch (language) {
-    case "python":
+    case "python": {
       // stdlib modules — treat as internal
       const PYTHON_STDLIB = new Set([
         "os", "sys", "re", "json", "math", "time", "datetime", "collections",
@@ -69,6 +69,7 @@ function isExternalImport(source: string, language: Language): boolean {
       ]);
       const rootModule = source.split(".")[0];
       return !PYTHON_STDLIB.has(rootModule ?? "");
+    }
     case "go":
       return source.includes(".");
     case "java":

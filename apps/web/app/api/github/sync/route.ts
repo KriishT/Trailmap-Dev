@@ -109,7 +109,7 @@ async function getAuthenticatedContext() {
 
   const { data: installations } = await appOctokit.apps.listInstallations({ per_page: 100 });
   const userInstallation = installations.find(
-    (installation: any) => installation.account?.login?.toLowerCase() === githubUsername.toLowerCase()
+    (installation) => installation.account?.login?.toLowerCase() === githubUsername.toLowerCase()
   );
 
   if (!userInstallation) {

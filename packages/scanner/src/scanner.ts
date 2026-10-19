@@ -68,7 +68,7 @@ const FRAMEWORK_HINTS: { key: string; framework: string }[] = [
 ];
 
 export async function scan(options: ScanOptions): Promise<DependencyGraph> {
-  const { rootDir, exclude = [], includeLibraries = false } = options;
+  const { rootDir, exclude = [], includeLibraries = false, repoName } = options;
   const absRoot = path.resolve(rootDir);
   const excludePatterns = [...DEFAULT_EXCLUDE, ...exclude];
 
@@ -83,7 +83,9 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
     const lang = detectLanguage(serviceDir);
     const relPath = path.relative(absRoot, serviceDir);
     const id = relPath.replace(/[/\\]/g, "-") || "root";
-    const name = path.basename(serviceDir) === "." ? path.basename(absRoot) : path.basename(serviceDir);
+    const name = relPath === "" && repoName
+      ? repoName
+      : path.basename(serviceDir) === "." ? path.basename(absRoot) : path.basename(serviceDir);
     const evidence: GraphEvidence[] = [];
 
     const manifest = findServiceManifest(serviceDir);
@@ -506,7 +508,7 @@ export async function scan(options: ScanOptions): Promise<DependencyGraph> {
 
   return {
     meta: {
-      repo: path.basename(absRoot),
+      repo: repoName ?? path.basename(absRoot),
       scanned_at: new Date().toISOString(),
       language_breakdown: languageCounts,
       total_files: totalFiles,
@@ -599,7 +601,7 @@ async function findServiceRoots(rootDir: string, ignore: string[]): Promise<stri
   ];
 
   const rootPkgPath = path.join(rootDir, "package.json");
-  let workspaceDirs: string[] = [];
+  const workspaceDirs: string[] = [];
   try {
     const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"));
     const workspaces: string[] = Array.isArray(rootPkg.workspaces)

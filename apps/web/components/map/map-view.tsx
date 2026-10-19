@@ -565,10 +565,13 @@ export function MapView({ graph }: { graph: DependencyGraph }) {
     }
   }, [displayGraph.nodes, selectedNode]);
 
-  const relation = selectedNode ? getFocusRelation(displayGraph, selectedNode.id, focusMode) : null;
-  const activeNodeIds = relation?.activeNodeIds ?? new Set<string>();
-  const highlightedNodeIds = relation?.highlightedNodeIds ?? new Set<string>();
-  const highlightedEdgeIndexes = relation?.highlightedEdgeIndexes ?? new Set<number>();
+  const relation = useMemo(
+    () => (selectedNode ? getFocusRelation(displayGraph, selectedNode.id, focusMode) : null),
+    [displayGraph, selectedNode, focusMode]
+  );
+  const activeNodeIds = useMemo(() => relation?.activeNodeIds ?? new Set<string>(), [relation]);
+  const highlightedNodeIds = useMemo(() => relation?.highlightedNodeIds ?? new Set<string>(), [relation]);
+  const highlightedEdgeIndexes = useMemo(() => relation?.highlightedEdgeIndexes ?? new Set<number>(), [relation]);
 
   const visibleNodes = useMemo(() => (
     baseNodes

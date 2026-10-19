@@ -1,4 +1,5 @@
 "use client";
+import { errorMessage } from "@/lib/errors";
 
 import { Check, Github, Loader2, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -42,8 +43,8 @@ export function SyncReposButton({ label = "Add repos" }: { label?: string }) {
           (data.repos as SelectableRepo[]).map((repo) => [repo.id, repo.selected])
         )
       );
-    } catch (e: any) {
-      setError(e.message || "Could not load repositories");
+    } catch (e) {
+      setError(errorMessage(e, "Could not load repositories"));
     } finally {
       setLoading(false);
     }
@@ -73,8 +74,8 @@ export function SyncReposButton({ label = "Add repos" }: { label?: string }) {
 
       setOpen(false);
       router.refresh();
-    } catch (e: any) {
-      setError(e.message || "Could not save repository selection");
+    } catch (e) {
+      setError(errorMessage(e, "Could not save repository selection"));
     } finally {
       setSaving(false);
     }

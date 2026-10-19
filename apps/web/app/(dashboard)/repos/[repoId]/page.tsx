@@ -5,6 +5,7 @@ import { ShareButton } from "@/components/map/share-button";
 import { RepoWorkspace } from "@/components/map/repo-workspace";
 import { ArrowLeft } from "lucide-react";
 import { selectDiffBaseline, type ComparableSnapshot } from "@/lib/graph-diff";
+import { readSnapshotGraph } from "@/lib/graph-read";
 
 export default async function RepoMapPage({ params }: { params: Promise<{ repoId: string }> }) {
   const { repoId } = await params;
@@ -28,8 +29,10 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
 
   const currentSnapshot = snapshot?.[0];
   const previousSnapshot = selectDiffBaseline((snapshot ?? []) as ComparableSnapshot[]);
+  const currentGraph = currentSnapshot ? readSnapshotGraph(currentSnapshot.raw_json) : null;
+  const previousGraph = previousSnapshot ? readSnapshotGraph(previousSnapshot.raw_json) : null;
 
-  if (!currentSnapshot) {
+  if (!currentSnapshot || !currentGraph) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
         <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "rgba(232,117,74,0.08)", border: "1px solid rgba(232,117,74,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -74,9 +77,9 @@ export default async function RepoMapPage({ params }: { params: Promise<{ repoId
 
       <RepoWorkspace
         repoId={repo.id}
-        graph={currentSnapshot.raw_json as any}
+        graph={currentGraph}
         scannedAt={currentSnapshot.scanned_at}
-        previousGraph={(previousSnapshot?.raw_json as any) ?? undefined}
+        previousGraph={previousGraph ?? undefined}
         previousScannedAt={previousSnapshot?.scanned_at}
       />
     </div>

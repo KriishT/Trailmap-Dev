@@ -5,6 +5,12 @@ import { handleGithubEvent } from "@/lib/github-events";
 import { githubApi } from "@/lib/github-api";
 import { buildPrImpactComment, computePrImpactForRepo, upsertPrImpactComment } from "@/lib/github-pr-impact";
 
+interface PullRequestPayload {
+  action?: string;
+  pull_request?: { number?: number };
+  repository?: { id?: number };
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
 
@@ -21,7 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let payload: Record<string, any>;
+  let payload: PullRequestPayload;
   try {
     payload = JSON.parse(body);
   } catch {
@@ -40,11 +46,11 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, ...result });
 }
 
-async function handlePullRequest(payload: Record<string, any>, db: ReturnType<typeof supabaseAdmin>) {
+async function handlePullRequest(payload: PullRequestPayload, db: ReturnType<typeof supabaseAdmin>) {
   const action = payload.action;
   const prNumber = payload.pull_request?.number;
   const githubRepoId = payload.repository?.id;
-  if (!["opened", "reopened", "synchronize"].includes(action) || !prNumber || !githubRepoId) return;
+  if (!action || !["opened", "reopened", "synchronize"].includes(action) || !prNumber || !githubRepoId) return;
 
   const { data: repos } = await db
     .from("repos")

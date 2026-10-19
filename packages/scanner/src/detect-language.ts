@@ -2,16 +2,6 @@ import { Language } from "./types.js";
 import * as fs from "fs";
 import * as path from "path";
 
-const LANGUAGE_INDICATORS: Record<Language, string[]> = {
-  typescript: ["tsconfig.json", "*.ts", "*.tsx"],
-  javascript: ["package.json", "*.js", "*.mjs", "*.cjs"],
-  python: ["requirements.txt", "pyproject.toml", "setup.py", "*.py"],
-  go: ["go.mod", "go.sum", "*.go"],
-  java: ["pom.xml", "build.gradle", "*.java"],
-  ruby: ["Gemfile", "*.rb"],
-  unknown: [],
-};
-
 export function detectLanguage(dirPath: string): Language {
   try {
     const files = fs.readdirSync(dirPath);
