@@ -1,0 +1,44 @@
+{
+  "description": "Rails app on Postgres sending SMS through Twilio.",
+  "nodes": [
+    {
+      "id": "service:.",
+      "type": "service"
+    },
+    {
+      "id": "db:postgres",
+      "type": "database"
+    },
+    {
+      "id": "vendor:twilio",
+      "type": "saas"
+    }
+  ],
+  "edges": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "service:.",
+      "to": "vendor:twilio",
+      "type": "http"
+    }
+  ],
+  "vendors": [
+    "twilio"
+  ],
+  "dataClasses": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "class": "PII"
+    },
+    {
+      "from": "service:.",
+      "to": "vendor:twilio",
+      "class": "PII"
+    }
+  ]
+}

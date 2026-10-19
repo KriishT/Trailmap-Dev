@@ -1,0 +1,20 @@
+services:
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "3000:3000"
+    environment:
+      ORDERS_URL: http://orders:3001
+      PAYMENTS_URL: http://payments:3002
+  orders:
+    build: ./services/orders
+    environment:
+      DATABASE_URL: postgres://app:secret@db:5432/orders
+      PAYMENTS_URL: http://payments:3002
+  payments:
+    build: ./services/payments
+    environment:
+      DATABASE_URL: postgres://app:secret@db:5432/payments
+      STRIPE_SECRET_KEY: sk_test_placeholder
+  db:
+    image: postgres:15

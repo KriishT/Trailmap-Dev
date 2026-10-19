@@ -21,5 +21,16 @@ export default defineConfig({
     ],
     testTimeout: 60_000,
     hookTimeout: 60_000,
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "json-summary"],
+      include: ["packages/scanner/src/**", "packages/pipeline/src/**", "packages/graph/src/**", "apps/web/lib/**"],
+      exclude: ["**/*.test.ts", "**/*.d.ts", "**/index.ts", "**/types.ts", "**/scanner-port.ts"],
+      thresholds: {
+        "packages/scanner/src/**": { lines: 80, statements: 80, functions: 80, branches: 70 },
+        "packages/pipeline/src/**": { lines: 80, statements: 80, functions: 80, branches: 70 },
+        "apps/web/lib/**": { lines: 80, statements: 80, functions: 80, branches: 70 },
+      },
+    },
   },
 });

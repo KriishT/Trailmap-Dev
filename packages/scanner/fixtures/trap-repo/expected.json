@@ -1,0 +1,12 @@
+{
+  "description": "Vendor and env-var names in regexes, comments, docs, tests, fixtures, vendored code, example env files, unused imports and dead code. Must produce no connections.",
+  "nodes": [
+    {
+      "id": "service:.",
+      "type": "service"
+    }
+  ],
+  "edges": [],
+  "vendors": [],
+  "dataClasses": []
+}

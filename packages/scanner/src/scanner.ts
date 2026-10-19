@@ -1,866 +1,749 @@
-import * as fs from "fs";
-import * as path from "path";
-import { glob } from "glob";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as yaml from "js-yaml";
+import type { DataClass, DependencyGraph, GraphEvidence, GraphNode, Language } from "@trailmap/graph";
+import type { ScanOptions } from "./types.js";
+import { walk, makeSnippet, isToolingConfig, type FileInfo } from "./files.js";
+import { tokenize, langForFile, type Lang } from "./tokenize.js";
 import {
-  Confidence,
-  DependencyGraph,
-  GraphEdge,
-  GraphEvidence,
-  GraphNode,
-  ScanOptions,
-} from "./types.js";
-import { detectLanguage, detectLanguageFromFile } from "./detect-language.js";
-import { parseImports } from "./parse-imports.js";
+  extractSignals, dropUnusedImports, maskDeadBlocks,
+  type Signal as CodeSignal, type ImportSignal,
+} from "./extract.js";
 import {
-  isKubernetesManifest,
-  parseDockerCompose,
-  parseKubernetesManifest,
-  parseOpenApiSpec,
-} from "./parse-infra.js";
-import { parseCiCdFile } from "./parse-cicd.js";
-import { classifyPackage, parseConnections } from "./parse-connections.js";
+  matchImport, matchManifestDep, matchHost, matchEnv, matchUri, matchImage, getVendor, getEngine, VENDORS,
+  type Entity, type ManifestEcosystem, type Engine,
+} from "./catalog.js";
+import { parseManifest, manifestKindForFile, SERVER_FRAMEWORKS, type Manifest } from "./manifests.js";
+import { isConfigFile, parseConfig, normalizeKey, engineFromConfigKey, engineFromAdoString, type ConfigValue } from "./config.js";
+import {
+  isComposeFile, parseCompose, parseDockerfile, looksLikeKubernetes, parseKubernetes, parseHelmChart,
+  type DeployUnit, type HelmChart,
+} from "./deploy.js";
+import { parseTerraform, parseCloudFormation, looksLikeCloudFormation, linkReferences, type IacResource } from "./iac.js";
+import { mapIac, INTERNET_ID } from "./iac-map.js";
+import { findSchemaFields, classifyField, type SchemaField } from "./dataclass.js";
+import { GraphBuilder, ev, type Signal } from "./assemble.js";
 
-const DEFAULT_EXCLUDE = [
-  "**/node_modules/**",
-  "**/.git/**",
-  "**/dist/**",
-  "**/build/**",
-  "**/.next/**",
-  "**/coverage/**",
-  "**/__pycache__/**",
-  "**/*.min.js",
-  "**/*.bundle.js",
-  "**/*.lock",
-];
+const SOURCE_LANGS: Lang[] = ["js", "py", "go", "java", "cs", "rb"];
+const MANIFEST_PRIORITY = ["package.json", "go.mod", "pom.xml", "gradle", "csproj", "pyproject", "requirements", "Gemfile"];
 
-const SOURCE_EXTENSIONS = new Set([
-  ".ts", ".tsx", ".js", ".mjs", ".cjs", ".jsx",
-  ".py", ".go", ".java", ".rb",
-]);
+interface Root {
+  rel: string;
+  id: string;
+  name: string;
+  manifests: Manifest[];
+  files: FileInfo[];
+  dockerfile?: { rel: string; ports: number[]; env: Array<{ name: string; value?: string; line?: number }> };
+  listens: Array<{ file: string; line: number; port?: number }>;
+  ports: number[];
+  config: ConfigValue[];
+  declared: Array<{ name: string; file: string; line: number }>;
+  envReads: Array<{ name: string; file: string; line: number }>;
+  fileVendors: Map<string, Set<string>>;
+  units: DeployUnit[];
+  aliases: Set<string>;
+  language: Language;
+  isRuntime: boolean;
+  public: boolean;
+}
 
-const SCANNABLE_EXTENSIONS = new Set([
-  ...SOURCE_EXTENSIONS,
-  ".env", ".env.local", ".env.production", ".env.development",
-]);
+type CallSig = Extract<CodeSignal, { k: "call" }>;
+type HttpSig = Extract<CodeSignal, { k: "http" }>;
+type UriSig = Extract<CodeSignal, { k: "uri" }>;
+type BotoSig = Extract<CodeSignal, { k: "boto" }>;
 
-const FRAMEWORK_HINTS: { key: string; framework: string }[] = [
-  { key: "next", framework: "nextjs" },
-  { key: "nuxt", framework: "nuxt" },
-  { key: "remix", framework: "remix" },
-  { key: "gatsby", framework: "gatsby" },
-  { key: "vite", framework: "vite" },
-  { key: "react", framework: "react" },
-  { key: "vue", framework: "vue" },
-  { key: "svelte", framework: "svelte" },
-  { key: "express", framework: "express" },
-  { key: "fastify", framework: "fastify" },
-  { key: "hono", framework: "hono" },
-  { key: "koa", framework: "koa" },
-  { key: "nestjs", framework: "nestjs" },
-  { key: "@nestjs/core", framework: "nestjs" },
-  { key: "fastapi", framework: "fastapi" },
-  { key: "django", framework: "django" },
-  { key: "flask", framework: "flask" },
-  { key: "gin", framework: "gin" },
-  { key: "fiber", framework: "fiber" },
-  { key: "spring", framework: "spring" },
-  { key: "rails", framework: "rails" },
-];
+const EXT_LANG: Record<string, Language> = {
+  ".ts": "typescript", ".tsx": "typescript", ".mts": "typescript", ".cts": "typescript",
+  ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
+  ".py": "python", ".go": "go", ".java": "java", ".kt": "java", ".cs": "csharp", ".rb": "ruby", ".rake": "ruby",
+};
+
+function aliasVariants(raw: string): string[] {
+  const lower = raw.toLowerCase().replace(/^@[^/]+\//, "");
+  const stripped = lower.replace(/[-_](service|svc|api|server|app)$/, "");
+  return stripped && stripped !== lower ? [lower, stripped] : [lower];
+}
+
+const isIp = (h: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(h);
+const RESERVED_HOST = /(^|\.)(example\.(com|org|net)|localhost|test|invalid|example|local)$/i;
+
+function parseUrl(value: string): { host: string; port?: number; path: string } | null {
+  const m = /^(?:[a-z][a-z0-9+.-]*:\/\/)?(?:[^@/\s]*@)?([A-Za-z0-9._-]+)(?::(\d{2,5}))?(\/[^\s]*)?/.exec(value.trim());
+  if (!m || !m[1]) return null;
+  return { host: m[1].toLowerCase(), port: m[2] ? Number.parseInt(m[2], 10) : undefined, path: m[3] ?? "" };
+}
+
+const dirOf = (rel: string) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "");
+const baseOf = (rel: string) => rel.split("/").pop() ?? rel;
 
 export async function scan(options: ScanOptions): Promise<DependencyGraph> {
-  const { rootDir, exclude = [], includeLibraries = false, repoName } = options;
+  const { rootDir, exclude = [], includeLibraries = false, repoName, includeTests = false } = options;
   const absRoot = path.resolve(rootDir);
-  const excludePatterns = [...DEFAULT_EXCLUDE, ...exclude];
+  const repo = repoName ?? path.basename(absRoot);
+  const repoShort = repo.split("/").pop() ?? repo;
+  const scannedAt = options.scannedAt ?? new Date().toISOString();
 
-  const nodes = new Map<string, GraphNode>();
-  const edges: GraphEdge[] = [];
-  const languageCounts: Record<string, number> = {};
-  let totalFiles = 0;
+  const { files: walked } = await walk(absRoot, { exclude, maxFileBytes: options.maxFileBytes });
+  const active = walked.filter((f) => !f.ignored || (includeTests && f.ignored === "test"));
 
-  const serviceRoots = await findServiceRoots(absRoot, excludePatterns);
-
-  for (const serviceDir of serviceRoots) {
-    const lang = detectLanguage(serviceDir);
-    const relPath = path.relative(absRoot, serviceDir);
-    const id = relPath.replace(/[/\\]/g, "-") || "root";
-    const name = relPath === "" && repoName
-      ? repoName
-      : path.basename(serviceDir) === "." ? path.basename(absRoot) : path.basename(serviceDir);
-    const evidence: GraphEvidence[] = [];
-
-    const manifest = findServiceManifest(serviceDir);
-    if (manifest) {
-      evidence.push({
-        kind: "manifest",
-        source: path.relative(absRoot, manifest),
-        detail: "Service root discovered from project manifest",
-      });
+  const textCache = new Map<string, string>();
+  const read = (f: FileInfo): string => {
+    let t = textCache.get(f.rel);
+    if (t === undefined) {
+      try { t = fs.readFileSync(f.abs, "utf8"); } catch { t = ""; }
+      textCache.set(f.rel, t);
     }
-
-    const openApiFiles = await glob("**/{openapi,swagger}.{yaml,yml,json}", {
-      cwd: serviceDir,
-      ignore: excludePatterns,
-      absolute: true,
-    });
-    const endpoints: string[] = [];
-    for (const file of openApiFiles) {
-      endpoints.push(...parseOpenApiSpec(file));
-      evidence.push({
-        kind: "openapi",
-        source: path.relative(absRoot, file),
-        detail: "OpenAPI spec contributed endpoint metadata",
-      });
-    }
-
-    const port = await detectPort(serviceDir);
-    const { framework, techStack } = detectFramework(serviceDir);
-
-    if (port) {
-      evidence.push({
-        kind: "port",
-        source: relPath || ".",
-        detail: `Detected service port ${port}`,
-      });
-    }
-
-    if (framework) {
-      evidence.push({
-        kind: "framework",
-        source: relPath || ".",
-        detail: `Detected framework ${framework}`,
-      });
-    }
-
-    nodes.set(id, {
-      id,
-      name,
-      type: "service",
-      language: lang,
-      port,
-      endpoints,
-      path: relPath || ".",
-      framework,
-      techStack,
-      evidence,
-    });
-
-    languageCounts[lang] = (languageCounts[lang] ?? 0) + 1;
-  }
-
-  const composeFiles = await glob("**/docker-compose.{yml,yaml}", {
-    cwd: absRoot,
-    ignore: excludePatterns,
-    absolute: true,
-  });
-
-  for (const composeFile of composeFiles) {
-    const services = parseDockerCompose(composeFile);
-    for (const svc of services) {
-      const id = `compose-${svc.name}`;
-      if (!nodes.has(svc.name) && !nodes.has(id)) {
-        const isDb = isDbImage(svc.image ?? "");
-        nodes.set(id, {
-          id,
-          name: svc.name,
-          type: isDb ? "database" : "service",
-          language: "unknown",
-          port: svc.port ?? null,
-          endpoints: [],
-          path: path.relative(absRoot, path.dirname(composeFile)),
-          evidence: [
-            {
-              kind: "compose",
-              source: path.relative(absRoot, composeFile),
-              detail: `Discovered from docker-compose service "${svc.name}"`,
-            },
-          ],
-        });
-      }
-
-      for (const dep of svc.dependsOn ?? []) {
-        const fromId = findNodeId(nodes, svc.name);
-        const toId = findNodeId(nodes, dep);
-        if (fromId && toId) {
-          addEdge(edges, {
-            from: fromId,
-            to: toId,
-            type: "http",
-            confidence: "high",
-            evidence: [
-              {
-                kind: "compose",
-                source: path.relative(absRoot, composeFile),
-                detail: `depends_on links "${svc.name}" to "${dep}"`,
-              },
-            ],
-          });
-        }
-      }
-    }
-  }
-
-  const yamlFiles = await glob("**/*.{yaml,yml}", {
-    cwd: absRoot,
-    ignore: [...excludePatterns, "**/docker-compose*"],
-    absolute: true,
-  });
-
-  for (const yamlFile of yamlFiles) {
-    if (!isKubernetesManifest(yamlFile)) continue;
-
-    const services = parseKubernetesManifest(yamlFile);
-    for (const svc of services) {
-      const id = `k8s-${svc.name}`;
-      if (!nodes.has(svc.name) && !nodes.has(id)) {
-        nodes.set(id, {
-          id,
-          name: svc.name,
-          type: "service",
-          language: "unknown",
-          port: svc.port ?? null,
-          endpoints: [],
-          path: path.relative(absRoot, path.dirname(yamlFile)),
-          evidence: [
-            {
-              kind: "kubernetes",
-              source: path.relative(absRoot, yamlFile),
-              detail: `Discovered from Kubernetes manifest "${svc.name}"`,
-            },
-          ],
-        });
-      }
-    }
-  }
-
-  const sourceFiles = await glob("**/*", {
-    cwd: absRoot,
-    ignore: excludePatterns,
-    absolute: true,
-    nodir: true,
-    dot: true,
-  });
-
-  const portToNodeId = new Map<string, string>();
-  for (const [id, node] of nodes) {
-    if (node.port) portToNodeId.set(String(node.port), id);
-  }
-
-  for (const file of sourceFiles) {
-    const ext = path.extname(file);
-    const basename = path.basename(file);
-    const isEnv = basename.startsWith(".env") || basename === ".env";
-
-    if (!SCANNABLE_EXTENSIONS.has(ext) && !isEnv) continue;
-    totalFiles++;
-
-    try {
-      const content = fs.readFileSync(file, "utf-8");
-      const lang = detectLanguageFromFile(file);
-      const fileServiceId = findServiceForFile(file, serviceRoots, absRoot);
-
-      if (SOURCE_EXTENSIONS.has(ext)) {
-        const imports = parseImports(content, lang);
-        for (const imp of imports) {
-          if (!imp.isExternal || imp.isRelative) continue;
-
-          const targetId = findNodeByPackageName(nodes, imp.source);
-          if (targetId && fileServiceId && targetId !== fileServiceId) {
-            addEdge(edges, {
-              from: fileServiceId,
-              to: targetId,
-              type: "import",
-              confidence: "medium",
-              evidence: [
-                {
-                  kind: "import",
-                  source: path.relative(absRoot, file),
-                  detail: `Imports package "${imp.source}"`,
-                },
-              ],
-            });
-            continue;
-          }
-
-          const { kind, name } = classifyPackage(imp.source);
-          if (kind && name && fileServiceId) {
-            const nodeId = `${kind}-${name}`;
-            if (!nodes.has(nodeId)) {
-              nodes.set(nodeId, {
-                id: nodeId,
-                name,
-                type: kind === "database" ? "database" : "saas",
-                language: "unknown",
-                port: null,
-                endpoints: [],
-                path: "",
-                evidence: [
-                  {
-                    kind: "package-classification",
-                    source: path.relative(absRoot, file),
-                    detail: `Package "${imp.source}" classified as ${kind} "${name}"`,
-                  },
-                ],
-              });
-            }
-
-            addEdge(edges, {
-              from: fileServiceId,
-              to: nodeId,
-              type: kind === "database" ? "database" : "http",
-              confidence: "high",
-              evidence: [
-                {
-                  kind: "package-classification",
-                  source: path.relative(absRoot, file),
-                  detail: `Package "${imp.source}" implies dependency on ${name}`,
-                },
-              ],
-            });
-            continue;
-          }
-
-          if (includeLibraries && !targetId) {
-            const libId = `lib-${imp.source.replace(/[@/]/g, "-")}`;
-            if (!nodes.has(libId)) {
-              nodes.set(libId, {
-                id: libId,
-                name: imp.source,
-                type: "library",
-                language: "unknown",
-                port: null,
-                endpoints: [],
-                path: "",
-                evidence: [
-                  {
-                    kind: "import",
-                    source: path.relative(absRoot, file),
-                    detail: `External library "${imp.source}"`,
-                  },
-                ],
-              });
-            }
-
-            if (fileServiceId) {
-              addEdge(edges, {
-                from: fileServiceId,
-                to: libId,
-                type: "import",
-                confidence: "high",
-                evidence: [
-                  {
-                    kind: "import",
-                    source: path.relative(absRoot, file),
-                    detail: `Imports external library "${imp.source}"`,
-                  },
-                ],
-              });
-            }
-          }
-        }
-      }
-
-      const connections = parseConnections(content, file);
-      for (const conn of connections) {
-        if (!fileServiceId) continue;
-
-        if (conn.kind === "http") {
-          const portMatch = conn.target.match(/^localhost:(\d+)$/);
-          if (portMatch) {
-            const targetId = portToNodeId.get(portMatch[1] ?? "");
-            if (targetId && targetId !== fileServiceId) {
-              addEdge(edges, {
-                from: fileServiceId,
-                to: targetId,
-                type: "http",
-                confidence: "high",
-                evidence: [
-                  {
-                    kind: "http-call",
-                    source: path.relative(absRoot, file),
-                    detail: conn.detail,
-                  },
-                ],
-              });
-            }
-          } else if (conn.target !== "env-url" && !conn.target.startsWith("env-")) {
-            const nodeId = `ext-${conn.target.replace(/[.:]/g, "-")}`;
-            if (!nodes.has(nodeId)) {
-              nodes.set(nodeId, {
-                id: nodeId,
-                name: conn.target,
-                type: "external",
-                language: "unknown",
-                port: null,
-                endpoints: [],
-                path: "",
-                evidence: [
-                  {
-                    kind: "http-call",
-                    source: path.relative(absRoot, file),
-                    detail: `References external host "${conn.target}"`,
-                  },
-                ],
-              });
-            }
-
-            addEdge(edges, {
-              from: fileServiceId,
-              to: nodeId,
-              type: "http",
-              confidence: conn.confidence,
-              evidence: [
-                {
-                  kind: "http-call",
-                  source: path.relative(absRoot, file),
-                  detail: conn.detail,
-                },
-              ],
-            });
-          }
-        }
-
-        if (conn.kind === "database") {
-          const nodeId = `database-${conn.target}`;
-          if (!nodes.has(nodeId)) {
-            nodes.set(nodeId, {
-              id: nodeId,
-              name: conn.target,
-              type: "database",
-              language: "unknown",
-              port: null,
-              endpoints: [],
-              path: "",
-              evidence: [
-                {
-                  kind: "env",
-                  source: path.relative(absRoot, file),
-                  detail: `Database dependency "${conn.target}" inferred from environment or code`,
-                },
-              ],
-            });
-          }
-
-          addEdge(edges, {
-            from: fileServiceId,
-            to: nodeId,
-            type: "database",
-            confidence: conn.confidence,
-            evidence: [
-              {
-                kind: "env",
-                source: path.relative(absRoot, file),
-                detail: conn.detail,
-              },
-            ],
-          });
-        }
-
-        if (conn.kind === "queue") {
-          const nodeId = `queue-${conn.target}`;
-          if (!nodes.has(nodeId)) {
-            nodes.set(nodeId, {
-              id: nodeId,
-              name: conn.target,
-              type: "external",
-              language: "unknown",
-              port: null,
-              endpoints: [],
-              path: "",
-              evidence: [
-                {
-                  kind: "env",
-                  source: path.relative(absRoot, file),
-                  detail: `Queue dependency "${conn.target}" inferred from environment or code`,
-                },
-              ],
-            });
-          }
-
-          addEdge(edges, {
-            from: fileServiceId,
-            to: nodeId,
-            type: "queue",
-            confidence: conn.confidence,
-            evidence: [
-              {
-                kind: "env",
-                source: path.relative(absRoot, file),
-                detail: conn.detail,
-              },
-            ],
-          });
-        }
-      }
-    } catch {
-      // Skip unreadable files
-    }
-  }
-
-  const ciFiles = await glob(
-    "**/{.github/workflows/*.yml,.circleci/config.yml,Jenkinsfile}",
-    { cwd: absRoot, ignore: excludePatterns, absolute: true }
-  );
-  for (const ciFile of ciFiles) {
-    parseCiCdFile(ciFile);
-  }
-
-  consolidateNodes(nodes, edges);
-
-  return {
-    meta: {
-      repo: repoName ?? path.basename(absRoot),
-      scanned_at: new Date().toISOString(),
-      language_breakdown: languageCounts,
-      total_files: totalFiles,
-    },
-    nodes: Array.from(nodes.values()),
-    edges: deduplicateEdges(edges),
+    return t;
   };
-}
+  // Read everything up front, in parallel: on slow or virus-scanned file systems the serial
+  // cost of thousands of small reads dominates the whole scan.
+  {
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: 64 }, async () => {
+        while (next < active.length) {
+          const f = active[next++]!;
+          try {
+            textCache.set(f.rel, await fs.promises.readFile(f.abs, "utf8"));
+          } catch {
+            textCache.set(f.rel, "");
+          }
+        }
+      })
+    );
+  }
+  const lineCache = new Map<string, string[]>();
+  const lineText = (rel: string, line: number): string | undefined => {
+    let ls = lineCache.get(rel);
+    if (!ls) { ls = (textCache.get(rel) ?? "").split("\n"); lineCache.set(rel, ls); }
+    return ls[line - 1];
+  };
+  const evAt = (kind: GraphEvidence["kind"], file: string, line: number | undefined, detail: string): GraphEvidence =>
+    ev(kind, file, detail, line, line ? makeSnippet(lineText(file, line)) : undefined);
 
-function detectFramework(serviceDir: string): { framework: string | undefined; techStack: string[] } {
-  const pkgPath = path.join(serviceDir, "package.json");
-  const techStack: string[] = [];
-  let framework: string | undefined;
+  const builder = new GraphBuilder();
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-    const allDeps = {
-      ...pkg.dependencies,
-      ...pkg.devDependencies,
-      ...pkg.peerDependencies,
-    };
+  // ---------------------------------------------------------------- 1. manifests and roots
+  const tsconfigDirs = new Set(active.filter((f) => baseOf(f.rel) === "tsconfig.json").map((f) => dirOf(f.rel)));
 
-    for (const { key, framework: hintedFramework } of FRAMEWORK_HINTS) {
-      if (allDeps[key] !== undefined) {
-        if (!framework) framework = hintedFramework;
-        break;
-      }
+  const manifestsByDir = new Map<string, Manifest[]>();
+  for (const f of active) {
+    if (!manifestKindForFile(f.rel)) continue;
+    const m = parseManifest(f.rel, read(f), { hasTsconfig: tsconfigDirs.has(dirOf(f.rel)) });
+    if (!m) continue;
+    const list = manifestsByDir.get(dirOf(f.rel)) ?? [];
+    list.push(m);
+    manifestsByDir.set(dirOf(f.rel), list);
+  }
+  const rank = (m: Manifest) => { const i = MANIFEST_PRIORITY.indexOf(m.kind); return i === -1 ? 99 : i; };
+  for (const list of manifestsByDir.values()) list.sort((a, b) => rank(a) - rank(b) || a.file.localeCompare(b.file));
+
+  const sourceFiles = active.filter((f) => langForFile(f.rel));
+  const rootDirs = new Set<string>();
+  for (const [dir, list] of manifestsByDir) {
+    if (list.some((m) => !m.aggregator)) rootDirs.add(dir);
+  }
+  const underAnyRoot = (dir: string) => [...rootDirs].some((r) => r === "" || dir === r || dir.startsWith(r + "/"));
+  const dockerfiles = active.filter((f) => /^Dockerfile(\..+)?$|\.Dockerfile$/.test(baseOf(f.rel)));
+  for (const d of dockerfiles) {
+    const dir = dirOf(d.rel);
+    if (!underAnyRoot(dir)) rootDirs.add(dir);
+  }
+
+  // compose build contexts add roots for source directories that have no manifest
+  const composeUnitsAll: DeployUnit[] = [];
+  for (const f of active) if (isComposeFile(f.rel)) composeUnitsAll.push(...parseCompose(f.rel, read(f)));
+  for (const u of composeUnitsAll) {
+    const ctx = u.buildContext;
+    if (ctx !== undefined && !underAnyRoot(ctx) && sourceFiles.some((s) => ctx === "" || s.rel.startsWith(ctx + "/"))) {
+      rootDirs.add(ctx);
     }
+  }
+  if (rootDirs.size === 0 && sourceFiles.length > 0) rootDirs.add("");
 
-    const stackPackages: Record<string, string> = {
-      "tailwindcss": "tailwind",
-      "@tailwindcss/vite": "tailwind",
-      "prisma": "prisma",
-      "@prisma/client": "prisma",
-      "drizzle-orm": "drizzle",
-      "typeorm": "typeorm",
-      "mongoose": "mongoose",
-      "trpc": "trpc",
-      "@trpc/server": "trpc",
-      "graphql": "graphql",
-      "@apollo/server": "apollo",
-      "apollo-server": "apollo",
-      "socket.io": "socketio",
-      "ws": "websocket",
-      "zod": "zod",
-      "redis": "redis",
-      "ioredis": "redis",
-      "@supabase/supabase-js": "supabase",
-      "firebase-admin": "firebase",
-      "stripe": "stripe",
-      "openai": "openai",
-      "resend": "resend",
-      "@clerk/nextjs": "clerk",
-    };
+  let sortedDirs = [...rootDirs].sort((a, b) => b.length - a.length || a.localeCompare(b));
+  const deepestRoot = (rel: string): string | null => {
+    for (const d of sortedDirs) if (d === "" || rel === d || rel.startsWith(d + "/")) return d;
+    return null;
+  };
+  // A root that contains other roots only stays if it owns source files of its own.
+  for (const d of [...rootDirs]) {
+    const hasChild = [...rootDirs].some((o) => o !== d && (d === "" || o.startsWith(d + "/")));
+    if (!hasChild) continue;
+    const own = sourceFiles.filter((s) => deepestRoot(s.rel) === d).length;
+    if (own === 0) rootDirs.delete(d);
+  }
+  sortedDirs = [...rootDirs].sort((a, b) => b.length - a.length || a.localeCompare(b));
 
-    for (const [pkg, label] of Object.entries(stackPackages)) {
-      if (allDeps[pkg] !== undefined && !techStack.includes(label)) {
-        techStack.push(label);
-      }
+  const roots = new Map<string, Root>();
+  for (const dir of [...rootDirs].sort()) {
+    const manifests = manifestsByDir.get(dir) ?? [];
+    roots.set(dir, {
+      rel: dir, id: `service:${dir || "."}`, name: dir === "" ? repoShort : baseOf(dir),
+      manifests: manifests.filter((m) => !m.aggregator),
+      files: [], listens: [], ports: [], config: [], declared: [], envReads: [], fileVendors: new Map(),
+      units: [], aliases: new Set(), language: "unknown", isRuntime: false, public: false,
+    });
+  }
+  for (const f of active) {
+    const d = deepestRoot(f.rel);
+    if (d !== null && roots.has(d)) roots.get(d)!.files.push(f);
+  }
+  const rootList = [...roots.values()].sort((a, b) => a.rel.localeCompare(b.rel));
+  const rootOfFile = (rel: string): Root | null => {
+    const d = deepestRoot(rel);
+    return d === null ? null : (roots.get(d) ?? null);
+  };
+
+  // ---------------------------------------------------------------- 2. aliases
+  const aliasMap = new Map<string, string>();
+  const registerAlias = (alias: string | undefined, id: string) => {
+    if (!alias) return;
+    for (const v of aliasVariants(alias)) if (v && !aliasMap.has(v)) aliasMap.set(v, id);
+  };
+  const manifestNames = new Map<string, Root>();
+  const goModules = new Map<string, Root>();
+  for (const r of rootList) {
+    registerAlias(r.name, r.id);
+    r.aliases.add(r.name.toLowerCase());
+    for (const m of r.manifests) {
+      if (!m.name) continue;
+      registerAlias(m.name, r.id);
+      r.aliases.add(m.name.toLowerCase());
+      if (m.kind === "package.json") manifestNames.set(m.name, r);
+      if (m.kind === "go.mod") goModules.set(m.name, r);
     }
-  } catch {
-    // Ignore malformed package metadata
   }
 
-  try {
-    const req = fs.readFileSync(path.join(serviceDir, "requirements.txt"), "utf-8");
-    if (/^fastapi/im.test(req)) framework = "fastapi";
-    else if (/^django/im.test(req)) framework = "django";
-    else if (/^flask/im.test(req)) framework = "flask";
-  } catch {
-    // Ignore missing Python manifests
+  // ---------------------------------------------------------------- 3. deploy descriptors
+  const units: DeployUnit[] = [...composeUnitsAll];
+  const helmCharts = new Map<string, HelmChart>();
+  const chartDirs = active.filter((f) => baseOf(f.rel) === "Chart.yaml").map((f) => dirOf(f.rel));
+  const inChart = (rel: string) => chartDirs.find((d) => rel.startsWith((d ? d + "/" : "") + "templates/"));
+  for (const f of active) {
+    if (baseOf(f.rel) !== "Chart.yaml") continue;
+    let name = baseOf(dirOf(f.rel)) || "chart";
+    let values: unknown = {};
+    try { name = (yaml.load(read(f)) as { name?: string } | null)?.name ?? name; } catch { /* ignore */ }
+    const vf = active.find((x) => x.rel === (dirOf(f.rel) ? dirOf(f.rel) + "/" : "") + "values.yaml");
+    if (vf) { try { values = yaml.load(read(vf)); } catch { /* ignore */ } }
+    helmCharts.set(dirOf(f.rel), { dir: dirOf(f.rel), name, values, templates: [] });
+  }
+  for (const f of active) {
+    const cd = inChart(f.rel);
+    if (cd !== undefined && f.ext === ".yaml") helmCharts.get(cd)?.templates.push({ file: f.rel, content: read(f) });
+    else if (cd !== undefined && f.ext === ".yml") helmCharts.get(cd)?.templates.push({ file: f.rel, content: read(f) });
+  }
+  for (const chart of helmCharts.values()) units.push(...parseHelmChart(chart));
+
+  const iacResources: IacResource[] = [];
+  for (const f of active) {
+    if (f.ext === ".tf") {
+      iacResources.push(...(await parseTerraform(f.rel, read(f))));
+    } else if (/\.(ya?ml|json)$/.test(f.ext) && !isComposeFile(f.rel) && inChart(f.rel) === undefined && !isConfigFile(f.rel) && !manifestKindForFile(f.rel) && !baseOf(f.rel).startsWith("tsconfig") && f.size < 512 * 1024) {
+      const text = read(f);
+      if (looksLikeCloudFormation(text)) iacResources.push(...parseCloudFormation(f.rel, text));
+      else if (/\.ya?ml$/.test(f.ext) && looksLikeKubernetes(text)) units.push(...parseKubernetes(f.rel, text));
+    }
+  }
+  linkReferences(iacResources);
+
+  // attribute deploy units to code roots
+  const unattributed: DeployUnit[] = [];
+  const unitNodeId = new Map<DeployUnit, string>();
+  for (const u of units) {
+    let hit: Root | undefined;
+    const ctx = u.buildContext;
+    if (ctx !== undefined) {
+      hit = rootList.find((r) => r.rel === ctx) ?? rootList.find((r) => r.rel !== "" && ctx.startsWith(r.rel + "/"));
+    }
+    if (!hit) {
+      const names = [u.name, ...u.aliases].flatMap(aliasVariants);
+      hit = rootList.find((r) => [...r.aliases].flatMap(aliasVariants).some((a) => names.includes(a)));
+    }
+    if (!hit && u.image && !matchImage(u.image)) {
+      const imgName = ((u.image.split(":")[0] ?? "").split("/").pop() ?? "").toLowerCase();
+      hit = rootList.find((r) => [...r.aliases].flatMap(aliasVariants).includes(imgName));
+    }
+    if (hit) {
+      unitNodeId.set(u, hit.id);
+      hit.units.push(u);
+      for (const a of [u.name, ...u.aliases]) { registerAlias(a, hit.id); hit.aliases.add(a.toLowerCase()); }
+      hit.ports.push(...u.ports);
+      if (u.public) hit.public = true;
+    } else unattributed.push(u);
   }
 
-  try {
-    const goMod = fs.readFileSync(path.join(serviceDir, "go.mod"), "utf-8");
-    if (/gin-gonic\/gin/.test(goMod)) framework = "gin";
-    else if (/gofiber\/fiber/.test(goMod)) framework = "fiber";
-    else if (/labstack\/echo/.test(goMod)) framework = "echo";
-  } catch {
-    // Ignore missing Go manifests
+  const entityPrefix = (e: Engine) => (e.nodeType === "database" ? "db" : e.nodeType);
+  const entityNodeId = (entity: Entity) =>
+    entity.kind === "vendor" ? `vendor:${entity.id}` : `${entityPrefix(entity.engine)}:${entity.id}`;
+  const ensureEntity = (entity: Entity): string => {
+    const id = entityNodeId(entity);
+    if (entity.kind === "vendor") {
+      builder.addNode({ id, name: entity.vendor.name, type: "saas", language: "unknown", port: null, endpoints: [], path: "", vendor: entity.id, evidence: [] });
+    } else {
+      builder.addNode({ id, name: entity.engine.name, type: entity.engine.nodeType, language: "unknown", port: null, endpoints: [], path: "", engine: entity.id, evidence: [] });
+    }
+    return id;
+  };
+  const edgeTypeFor = (entity: Entity) => (entity.kind === "engine" ? entity.engine.edge : ("http" as const));
+  const linkEntity = (from: string, entity: Entity, signal: Signal, evidence: GraphEvidence[]): string => {
+    const to = ensureEntity(entity);
+    builder.addEdge(from, to, edgeTypeFor(entity), signal, evidence);
+    if (entity.kind === "engine" && entity.engine.vendor) {
+      const v = getVendor(entity.engine.vendor);
+      if (v) builder.addEdge(from, ensureEntity({ kind: "vendor", id: v.id, vendor: v }), "http", signal, evidence);
+    }
+    return to;
+  };
+
+  // Compose / k8s infrastructure that is not one of our code services
+  for (const u of unattributed) {
+    const engine = u.image ? matchImage(u.image) : null;
+    const kind = (u.kind === "compose" ? "compose" : u.kind === "helm" ? "helm" : "kubernetes") as GraphEvidence["kind"];
+    const evd = [evAt(kind, u.file, u.line, `${u.kind} service "${u.name}"${u.image ? ` (image ${u.image})` : ""}`)];
+    if (engine) {
+      const id = ensureEntity({ kind: "engine", id: engine.id, engine });
+      const n = builder.nodes.get(id)!;
+      n.evidence = [...(n.evidence ?? []), ...evd];
+      for (const a of [u.name, ...u.aliases]) registerAlias(a, id);
+      continue;
+    }
+    if (!u.image && u.buildContext === undefined) continue;
+    const id = `deploy:${u.name}`;
+    const node: GraphNode = {
+      id, name: u.name, type: "service", language: "unknown", port: u.ports[0] ?? null, endpoints: [],
+      path: dirOf(u.file) || ".", evidence: evd,
+    };
+    if (u.public) {
+      node.public = true;
+      node.exposure = [{ direction: "ingress", cidr: "0.0.0.0/0", port: u.ports[0] ?? null, source: u.file, line: u.line }];
+    }
+    builder.addNode(node);
+    for (const a of [u.name, ...u.aliases]) registerAlias(a, id);
+    unitNodeId.set(u, id);
   }
 
-  return { framework, techStack };
-}
+  // ---------------------------------------------------------------- 4. read source and config files
+  const languageCounts: Record<string, number> = {};
+  const schemaFieldsByRoot = new Map<Root, SchemaField[]>();
+  const callsByRoot = new Map<Root, Array<{ file: string; sig: CallSig }>>();
+  const httpByRoot = new Map<Root, Array<{ file: string; sig: HttpSig }>>();
+  const uriByRoot = new Map<Root, Array<{ file: string; sig: UriSig }>>();
+  const botoByRoot = new Map<Root, Array<{ file: string; sig: BotoSig }>>();
+  const importsByRoot = new Map<Root, Array<{ file: string; lang: Lang; sig: ImportSignal }>>();
+  const rubyConstHits = new Map<Root, Array<{ file: string; line: number; vendor: string; constant: string }>>();
+  const openApiEndpoints = new Map<Root, string[]>();
+  const constantToVendor = new Map<string, string>();
+  for (const v of VENDORS) for (const c of v.constants) constantToVendor.set(c, v.id);
+  const push = <T>(map: Map<Root, T[]>, root: Root, item: T) => {
+    const list = map.get(root);
+    if (list) list.push(item);
+    else map.set(root, [item]);
+  };
 
-async function findServiceRoots(rootDir: string, ignore: string[]): Promise<string[]> {
-  const manifestFiles = [
-    "package.json", "go.mod", "pom.xml", "build.gradle",
-    "requirements.txt", "pyproject.toml", "Gemfile",
-  ];
+  let totalFiles = 0;
+  for (const f of active) {
+    totalFiles++;
+    const root = rootOfFile(f.rel);
+    const lang = langForFile(f.rel);
+    if (lang) {
+      const key = EXT_LANG[f.ext] ?? "unknown";
+      languageCounts[key] = (languageCounts[key] ?? 0) + 1;
+    }
+    if (!root) continue;
+    const text = read(f);
 
-  const rootPkgPath = path.join(rootDir, "package.json");
-  const workspaceDirs: string[] = [];
-  try {
-    const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"));
-    const workspaces: string[] = Array.isArray(rootPkg.workspaces)
-      ? rootPkg.workspaces
-      : rootPkg.workspaces?.packages ?? [];
-
-    for (const pattern of workspaces) {
-      const matched = await glob(pattern, { cwd: rootDir, absolute: true });
-      for (const match of matched) {
-        if (fs.existsSync(path.join(match, "package.json"))) {
-          workspaceDirs.push(match);
+    if (lang && SOURCE_LANGS.includes(lang) && !isToolingConfig(f.rel)) {
+      const tokens = maskDeadBlocks(tokenize(text, lang), lang);
+      const signals = dropUnusedImports(extractSignals(tokens, lang), tokens);
+      const vendorsHere = new Set<string>();
+      root.fileVendors.set(f.rel, vendorsHere);
+      for (const s of signals) {
+        switch (s.k) {
+          case "import": push(importsByRoot, root, { file: f.rel, lang, sig: s }); break;
+          case "env": root.envReads.push({ name: s.name, file: f.rel, line: s.line }); break;
+          case "listen":
+            root.listens.push({ file: f.rel, line: s.line, port: s.port });
+            if (s.port) root.ports.push(s.port);
+            break;
+          case "call": push(callsByRoot, root, { file: f.rel, sig: s }); break;
+          case "http": push(httpByRoot, root, { file: f.rel, sig: s }); break;
+          case "uri": push(uriByRoot, root, { file: f.rel, sig: s }); break;
+          case "boto": push(botoByRoot, root, { file: f.rel, sig: s }); break;
+        }
+      }
+      if (lang === "rb") {
+        for (let i = 0; i < tokens.length - 1; i++) {
+          const t = tokens[i]!;
+          const vendor = t.t === "id" ? constantToVendor.get(t.v) : undefined;
+          if (vendor && tokens[i + 1]!.v === "::") {
+            push(rubyConstHits, root, { file: f.rel, line: t.line, vendor, constant: t.v });
+            vendorsHere.add(vendor);
+          }
         }
       }
     }
-  } catch {
-    // Ignore malformed workspace config
+
+    const fields = findSchemaFields(f.rel, text);
+    if (fields.length) schemaFieldsByRoot.set(root, [...(schemaFieldsByRoot.get(root) ?? []), ...fields]);
+
+    if (/(^|\/)(openapi|swagger)\.(ya?ml|json)$/i.test(f.rel)) {
+      try {
+        const doc = (f.ext === ".json" ? JSON.parse(text) : yaml.load(text)) as { paths?: Record<string, Record<string, unknown>> } | null;
+        const eps: string[] = [];
+        for (const [p, methods] of Object.entries(doc?.paths ?? {})) {
+          for (const m of Object.keys(methods ?? {})) {
+            if (["get", "post", "put", "patch", "delete", "head", "options"].includes(m)) eps.push(`${m.toUpperCase()} ${p}`);
+          }
+        }
+        openApiEndpoints.set(root, [...(openApiEndpoints.get(root) ?? []), ...eps]);
+      } catch { /* malformed spec */ }
+    }
+
+    if (f.declaredOnly) {
+      for (const c of parseConfig(".env", text)) root.declared.push({ name: c.key, file: f.rel, line: c.line });
+    } else if (isConfigFile(f.rel)) {
+      root.config.push(...parseConfig(f.rel, text));
+    }
+
+    if (/^Dockerfile(\..+)?$|\.Dockerfile$/.test(baseOf(f.rel)) && dirOf(f.rel) === root.rel) {
+      const info = parseDockerfile(text);
+      root.dockerfile = { rel: f.rel, ports: info.ports, env: info.env };
+      root.ports.push(...info.ports);
+    }
   }
 
-  if (workspaceDirs.length > 0) return workspaceDirs;
+  // ---------------------------------------------------------------- 5. service nodes
+  const portIndex = new Map<number, string[]>();
+  for (const r of rootList) {
+    for (const m of r.manifests) {
+      for (const script of Object.values(m.scripts)) {
+        const pm = /(?:PORT=|--port[= ]|-p )(\d{4,5})/.exec(script);
+        if (pm) r.ports.push(Number.parseInt(pm[1]!, 10));
+      }
+    }
+    for (const c of r.config) {
+      if (/^server[.:]port$/i.test(c.key) && /^\d+$/.test(c.value)) r.ports.push(Number.parseInt(c.value, 10));
+    }
+    const primary = r.manifests[0];
+    const fw = r.manifests.flatMap((m) => m.frameworks).find((x) => SERVER_FRAMEWORKS.has(x)) ?? r.manifests.flatMap((m) => m.frameworks)[0];
+    const hasStart = r.manifests.some((m) => "start" in m.scripts || "serve" in m.scripts);
+    const serverFw = r.manifests.some((m) => m.frameworks.some((x) => ["rails", "sinatra", "django", "aspnet", "spring", "micronaut", "quarkus"].includes(x)));
+    r.isRuntime = Boolean(r.dockerfile) || hasStart || r.listens.length > 0 || r.units.length > 0 || r.manifests.some((m) => m.webApp) || serverFw;
+    const langCounts = new Map<Language, number>();
+    for (const f of r.files) { const l = EXT_LANG[f.ext]; if (l) langCounts.set(l, (langCounts.get(l) ?? 0) + 1); }
+    r.language = primary?.language ?? ([...langCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unknown");
+    if (r.language === "javascript" && langCounts.get("typescript")) r.language = "typescript";
 
-  const roots = new Set<string>();
-  for (const manifest of manifestFiles) {
-    const files = await glob(`**/${manifest}`, {
-      cwd: rootDir,
-      ignore,
-      absolute: true,
+    const evidence: GraphEvidence[] = [];
+    for (const m of r.manifests) evidence.push(ev("manifest", m.file, `Service root from ${m.kind}`));
+    if (fw) evidence.push(ev("framework", primary?.file ?? (r.rel || "."), `Detected framework ${fw}`));
+    if (r.dockerfile) evidence.push(ev("port", r.dockerfile.rel, "Dockerfile present: runs as a container"));
+    for (const l of r.listens.slice(0, 3)) evidence.push(evAt("port", l.file, l.line, l.port ? `Listens on port ${l.port}` : "Starts a server"));
+    for (const u of r.units) evidence.push(evAt(u.kind === "compose" ? "compose" : u.kind === "helm" ? "helm" : "kubernetes", u.file, u.line, `Deployed as ${u.kind} "${u.name}"`));
+
+    const port = r.listens.find((l) => l.port)?.port ?? r.dockerfile?.ports[0] ?? r.ports[0] ?? null;
+    const node: GraphNode = {
+      id: r.id, name: r.name, type: r.isRuntime ? "service" : "library", language: r.language, port,
+      endpoints: [...new Set(openApiEndpoints.get(r) ?? [])].sort(), path: r.rel || ".", evidence,
+    };
+    if (fw) node.framework = fw;
+    const stack = [...new Set(r.manifests.flatMap((m) => m.techStack))].sort();
+    if (stack.length) node.techStack = stack;
+    if (r.public) {
+      node.public = true;
+      node.exposure = r.units.filter((u) => u.public).map((u) => ({ direction: "ingress" as const, cidr: "0.0.0.0/0", port: u.ports[0] ?? null, source: u.file, line: u.line }));
+    }
+    builder.addNode(node);
+    if (port) { const l = portIndex.get(port) ?? []; l.push(r.id); portIndex.set(port, l); }
+  }
+
+  // ---------------------------------------------------------------- 6. name resolution helpers
+  const resolveAlias = (host: string): string | null => {
+    let h = host.toLowerCase().replace(/\.$/, "");
+    if (h.endsWith(".svc.cluster.local") || h.endsWith(".svc")) h = h.split(".")[0]!;
+    if (h.includes(".")) return null;
+    for (const v of aliasVariants(h)) { const id = aliasMap.get(v); if (id) return id; }
+    return null;
+  };
+  const resolveLocalPort = (host: string, port?: number): string | null => {
+    if (!port) return null;
+    if (!(host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "host.docker.internal")) return null;
+    const ids = portIndex.get(port);
+    return ids && ids.length === 1 ? ids[0]! : null;
+  };
+  const targetType = (id: string) => {
+    const t = builder.nodes.get(id)?.type;
+    return t === "database" ? "database" : t === "queue" ? "queue" : t === "storage" ? "storage" : "http";
+  };
+  const internalTarget = (host: string, port?: number) => resolveLocalPort(host, port) ?? resolveAlias(host);
+
+  /** Link `from` to whatever a host points at (vendor, repo service, compose infra). */
+  const linkHost = (from: string, host: string, port: number | undefined, signal: Signal, evidence: GraphEvidence[]): string | null => {
+    const vendor = matchHost(host);
+    if (vendor) return linkEntity(from, vendor, signal, evidence);
+    const target = internalTarget(host, port);
+    if (target && target !== from) {
+      builder.addEdge(from, target, targetType(target), signal, evidence);
+      return target;
+    }
+    return null;
+  };
+
+  /** Environment set by deploy config (compose, k8s, helm, Dockerfile): where it points tells us what the service talks to. */
+  const applyDeployEnv = (
+    from: string,
+    r: Root | null,
+    entries: Array<{ name: string; value?: string; file: string; line?: number; kind: GraphEvidence["kind"] }>
+  ) => {
+    const readNames = new Set((r?.envReads ?? []).map((x) => normalizeKey(x.name)));
+    const readEvidence = (name: string) =>
+      (r?.envReads ?? []).filter((x) => normalizeKey(x.name) === normalizeKey(name)).map((x) => evAt("env", x.file, x.line, `Reads ${x.name}`));
+    for (const e of entries) {
+      const reads = readNames.has(normalizeKey(e.name));
+      const note = evAt(e.kind, e.file, e.line, `${e.name} is set for ${builder.nodes.get(from)?.name ?? from}`);
+      const value = e.value ?? "";
+      const entity = value ? matchUri(value) : null;
+      if (entity) {
+        const to = linkEntity(from, entity, "iac", [note]);
+        if (reads) builder.addEdge(from, to, edgeTypeFor(entity), "env-read", readEvidence(e.name));
+        continue;
+      }
+      const looksLikeTarget = value && (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) || /^[a-z0-9._-]+(:\d{2,5})?$/i.test(value));
+      if (looksLikeTarget && (reads || /url|host|endpoint|addr|uri/i.test(e.name))) {
+        const u = parseUrl(value);
+        const to = u ? linkHost(from, u.host, u.port, "iac", [note]) : null;
+        if (to) {
+          if (reads) builder.addEdge(from, to, targetType(to), "env-read", readEvidence(e.name));
+          continue;
+        }
+      }
+      const byName = matchEnv(e.name);
+      if (byName) linkEntity(from, byName, "iac", [note]);
+    }
+  };
+
+  // ---------------------------------------------------------------- 7. evidence per service
+  for (const r of rootList) {
+    const from = r.id;
+
+    for (const { file, lang, sig } of importsByRoot.get(r) ?? []) {
+      let entity: Entity | null = null;
+      for (const c of [sig.spec, ...sig.also]) { entity = matchImport(lang, c); if (entity) break; }
+      if (entity) {
+        const label = entity.kind === "vendor" ? entity.vendor.name : entity.engine.name;
+        linkEntity(from, entity, "sdk-import", [evAt("sdk-import", file, sig.line, `Imports ${sig.spec} (${label})`)]);
+        if (entity.kind === "vendor") r.fileVendors.get(file)?.add(entity.id);
+        else if (entity.engine.vendor) r.fileVendors.get(file)?.add(entity.engine.vendor);
+        continue;
+      }
+      let target: Root | undefined;
+      if (lang === "js") {
+        if (sig.spec.startsWith(".")) {
+          const resolved = path.posix.normalize(path.posix.join(dirOf(file), sig.spec));
+          const d = deepestRoot(resolved);
+          const other = d !== null ? roots.get(d) : undefined;
+          if (other && other !== r) target = other;
+        } else {
+          const name = sig.spec.startsWith("@") ? sig.spec.split("/").slice(0, 2).join("/") : sig.spec.split("/")[0]!;
+          target = manifestNames.get(name);
+        }
+      } else if (lang === "go") {
+        for (const [mod, other] of goModules) if (sig.spec === mod || sig.spec.startsWith(mod + "/")) target = other;
+      } else if (lang === "py") {
+        const id = aliasMap.get(sig.spec.split(".")[0]!.toLowerCase());
+        target = id ? rootList.find((x) => x.id === id) : undefined;
+      }
+      if (target && target !== r) {
+        builder.addEdge(from, target.id, "import", "import", [evAt("import", file, sig.line, `Imports ${sig.spec} from ${target.name}`)]);
+      } else if (includeLibraries && !sig.spec.startsWith(".") && !sig.spec.startsWith("/") && !sig.spec.startsWith("node:") && (lang === "js" || lang === "py" || lang === "go")) {
+        const lib = sig.spec.startsWith("@") ? sig.spec.split("/").slice(0, 2).join("/") : (lang === "go" ? sig.spec : sig.spec.split(/[/.]/)[0]!);
+        if (lib && !/^(os|sys|re|json|fs|path|http|https|net|url|util|crypto|events|stream|buffer|child_process|fmt|errors|io|strings|time|context)$/.test(lib)) {
+          const id = `lib:${lib}`;
+          builder.addNode({ id, name: lib, type: "library", language: "unknown", port: null, endpoints: [], path: "", evidence: [] });
+          builder.addEdge(from, id, "import", "import", [evAt("import", file, sig.line, `Imports external library ${sig.spec}`)]);
+        }
+      }
+    }
+
+    for (const { file, line, vendor, constant } of rubyConstHits.get(r) ?? []) {
+      const v = getVendor(vendor);
+      const hasGem = r.manifests.some((m) => m.deps.some((d) => matchManifestDep(d.eco as ManifestEcosystem, d.name)?.id === vendor));
+      if (v && hasGem) linkEntity(from, { kind: "vendor", id: v.id, vendor: v }, "sdk-import", [evAt("sdk-import", file, line, `References ${constant} from the ${v.name} gem`)]);
+    }
+
+    for (const { file, sig } of botoByRoot.get(r) ?? []) {
+      const engine = getEngine(sig.service);
+      if (engine) linkEntity(from, { kind: "engine", id: engine.id, engine }, "sdk-import", [evAt("sdk-import", file, sig.line, `boto3 client for ${sig.service}`)]);
+    }
+
+    const readNames = new Set<string>();
+    for (const e of r.envReads) {
+      readNames.add(normalizeKey(e.name));
+      const entity = matchEnv(e.name);
+      if (entity) linkEntity(from, entity, "env-read", [evAt("env", e.file, e.line, `Reads ${e.name}`)]);
+    }
+    const readEvidence = (name: string) =>
+      r.envReads.filter((x) => normalizeKey(x.name) === normalizeKey(name)).map((x) => evAt("env", x.file, x.line, `Reads ${x.name}`));
+
+    for (const { file, sig } of httpByRoot.get(r) ?? []) {
+      const u = parseUrl(sig.url);
+      if (!u) continue;
+      const evidence = [evAt("http-call", file, sig.line, `Calls ${u.host}${u.port ? `:${u.port}` : ""}`)];
+      const signal: Signal = sig.weak ? "http-weak" : "http-call";
+      if (linkHost(from, u.host, u.port, signal, evidence)) continue;
+      if (!sig.weak && u.host.includes(".") && !isIp(u.host) && !RESERVED_HOST.test(u.host) && !/\.(svc|cluster\.local|internal)$/i.test(u.host)) {
+        const id = `ext:${u.host}`;
+        builder.addNode({ id, name: u.host, type: "external", language: "unknown", port: null, endpoints: [], path: "", evidence: [] });
+        builder.addEdge(from, id, "http", signal, evidence);
+      }
+    }
+    for (const { file, sig } of uriByRoot.get(r) ?? []) {
+      const entity = matchUri(sig.value);
+      const rest = sig.value.replace(/^[a-z][a-z0-9+.-]*:(\/\/)?/i, "");
+      if (!entity || rest.length < 3) continue;
+      const label = entity.kind === "vendor" ? entity.vendor.name : entity.engine.name;
+      linkEntity(from, entity, "connstring", [evAt("env", file, sig.line, `Connection string for ${label}`)]);
+    }
+
+    for (const c of r.config) {
+      const uriEntity = matchUri(c.value);
+      const keyEngineId = engineFromConfigKey(c.key, c.value) ?? engineFromAdoString(c.value);
+      const keyEngine = keyEngineId ? getEngine(keyEngineId) : undefined;
+      const target: Entity | null = uriEntity ?? (keyEngine ? { kind: "engine", id: keyEngine.id, engine: keyEngine } : null);
+      if (target) {
+        const label = target.kind === "vendor" ? target.vendor.name : target.engine.name;
+        linkEntity(from, target, "connstring", [evAt("env", c.file, c.line, `${c.key} configures ${label}`)]);
+        continue;
+      }
+      if (/^https?:\/\//.test(c.value) || /^[a-z0-9.-]+:\d{2,5}$/i.test(c.value)) {
+        const u = parseUrl(c.value);
+        if (u && readNames.has(normalizeKey(c.key))) {
+          const to = linkHost(from, u.host, u.port, "iac", [evAt("env", c.file, c.line, `${c.key} points at ${u.host}`)]);
+          if (to) builder.addEdge(from, to, targetType(to), "env-read", readEvidence(c.key));
+        }
+      }
+    }
+
+    applyDeployEnv(from, r, (r.dockerfile?.env ?? []).map((e) => ({ ...e, file: r.dockerfile!.rel, kind: "iac" as GraphEvidence["kind"] })));
+
+    // Manifest dependencies corroborate existing edges; they never create an SDK/datastore edge alone.
+    for (const m of r.manifests) {
+      for (const d of m.deps) {
+        if (d.dev) continue;
+        const entity = matchManifestDep(d.eco as ManifestEcosystem, d.name);
+        if (entity) {
+          const id = entityNodeId(entity);
+          const type = edgeTypeFor(entity);
+          if (builder.hasEdge(from, id, type)) builder.addEdge(from, id, type, "dependency", [evAt("dependency", m.file, d.line, `Declares dependency ${d.name}`)]);
+          continue;
+        }
+        const sibling = d.eco === "npm" ? manifestNames.get(d.name) : undefined;
+        if (sibling && sibling !== r) {
+          builder.addEdge(from, sibling.id, "import", "dependency", [evAt("dependency", m.file, d.line, `Depends on workspace package ${d.name}`)]);
+        }
+      }
+    }
+
+    // Example env files: extra evidence for edges that already exist, never an edge of their own.
+    for (const d of r.declared) {
+      const entity = matchEnv(d.name);
+      if (!entity) continue;
+      const id = entityNodeId(entity);
+      const type = edgeTypeFor(entity);
+      if (builder.hasEdge(from, id, type)) builder.addEdge(from, id, type, "declared", [evAt("declared", d.file, d.line, `${d.name} listed in ${baseOf(d.file)}`)]);
+    }
+  }
+
+  // Deploy descriptors wire services together whether or not their source is in this repo.
+  const rootByNodeId = new Map(rootList.map((r) => [r.id, r]));
+  for (const [u, nodeId] of unitNodeId) {
+    const kind = (u.kind === "compose" ? "compose" : u.kind === "helm" ? "helm" : "kubernetes") as GraphEvidence["kind"];
+    applyDeployEnv(nodeId, rootByNodeId.get(nodeId) ?? null, u.env.map((e) => ({ ...e, file: u.file, kind })));
+    for (const dep of u.dependsOn) {
+      const to = resolveAlias(dep);
+      if (to && to !== nodeId) builder.addEdge(nodeId, to, targetType(to), "compose", [evAt(kind, u.file, u.line, `${u.name} depends_on ${dep}`)]);
+    }
+  }
+
+  // ---------------------------------------------------------------- 8. infrastructure as code
+  if (iacResources.length) {
+    mapIac(iacResources, {
+      builder,
+      resolveService: (names) => {
+        for (const n of names) {
+          const id = resolveAlias(n);
+          if (id && id.startsWith("service:")) return id;
+        }
+        return null;
+      },
     });
-    for (const file of files) roots.add(path.dirname(file));
+    const byEngine = new Map<string, string[]>();
+    for (const n of builder.nodes.values()) {
+      if (n.iac && n.engine) byEngine.set(n.engine, [...(byEngine.get(n.engine) ?? []), n.id]);
+    }
+    for (const [engineId, ids] of byEngine) {
+      const engine = getEngine(engineId);
+      if (!engine || ids.length !== 1) continue;
+      const codeId = `${entityPrefix(engine)}:${engineId}`;
+      if (builder.hasNode(codeId)) builder.mergeNodeInto(codeId, ids[0]!);
+    }
+  }
+  const publicUnits = [...unitNodeId.entries()].filter(([u]) => u.public);
+  if (publicUnits.length) {
+    builder.addNode({ id: INTERNET_ID, name: "Internet", type: "network", language: "unknown", port: null, endpoints: [], path: "", public: true, evidence: [] });
+    for (const [u, id] of publicUnits) {
+      builder.addEdge(INTERNET_ID, id, "network", "iac-ref", [evAt(u.kind === "helm" ? "helm" : "kubernetes", u.file, u.line, `${u.name} is exposed by an Ingress or LoadBalancer Service`)]);
+      const n = builder.nodes.get(id);
+      if (n) n.public = true;
+    }
   }
 
-  if (roots.size === 0) return [rootDir];
+  // ---------------------------------------------------------------- 9. data classification
+  const tag = (cls: DataClass, certainty: "evidenced" | "possible", evidence: GraphEvidence[]) => ({ class: cls, certainty, evidence });
 
-  const allRoots = Array.from(roots).sort((a, b) => a.length - b.length);
-  const hasChildren = new Set<string>();
-  for (const root of allRoots) {
-    for (const other of allRoots) {
-      if (other !== root && other.startsWith(root + path.sep)) {
-        hasChildren.add(root);
-        break;
+  for (const r of rootList) {
+    const dbEdges = builder.edgesFrom(r.id).filter((e) => e.type === "database");
+    const byClass = new Map<DataClass, GraphEvidence[]>();
+    const engineByClass = new Map<DataClass, Set<string>>();
+    for (const fld of schemaFieldsByRoot.get(r) ?? []) {
+      const cls = classifyField(fld.field, fld.typeHint);
+      if (!cls) continue;
+      const list = byClass.get(cls) ?? [];
+      if (list.length < 5) list.push(evAt("schema", fld.file, fld.line, `${fld.entity}.${fld.field} holds ${cls}`));
+      byClass.set(cls, list);
+      if (fld.engine) engineByClass.set(cls, new Set([...(engineByClass.get(cls) ?? []), fld.engine]));
+    }
+    for (const [cls, evidence] of byClass) {
+      const engines = engineByClass.get(cls);
+      const bound = engines?.size
+        ? dbEdges.filter((e) => { const eng = builder.nodes.get(e.to)?.engine; return eng !== undefined && engines.has(eng); })
+        : [];
+      const targets = bound.length ? bound : dbEdges;
+      const certainty = bound.length || dbEdges.length === 1 ? "evidenced" : "possible";
+      for (const t of targets) builder.addEdgeTag(r.id, t.to, t.type, tag(cls, certainty, evidence));
+    }
+
+    for (const e of builder.edgesFrom(r.id).filter((x) => x.to.startsWith("vendor:"))) {
+      const vendor = getVendor(e.to.slice("vendor:".length));
+      if (!vendor) continue;
+      const evidenced = new Set<DataClass>();
+      for (const { file, sig } of callsByRoot.get(r) ?? []) {
+        if (!r.fileVendors.get(file)?.has(vendor.id)) continue;
+        for (const rule of vendor.calls) {
+          if (!rule.ids.includes(sig.id)) continue;
+          if (rule.withArgs && !rule.withArgs.some((a) => sig.args.includes(a))) continue;
+          evidenced.add(rule.class);
+          builder.addEdgeTag(r.id, e.to, e.type, tag(rule.class, "evidenced", [evAt("call-site", file, sig.line, `${sig.id}(...) handles ${rule.class} for ${vendor.name}`)]));
+        }
+      }
+      for (const cls of vendor.data) {
+        if (evidenced.has(cls)) continue;
+        builder.addEdgeTag(r.id, e.to, e.type, tag(cls, "possible", [ev("sdk-import", r.rel || ".", `${vendor.name} typically processes ${cls}`)]));
       }
     }
   }
 
-  const leafRoots = allRoots.filter((root) => !hasChildren.has(root));
-  return leafRoots.length > 0 ? leafRoots : [rootDir];
-}
-
-function findServiceManifest(serviceDir: string): string | null {
-  const candidates = [
-    "package.json",
-    "go.mod",
-    "pom.xml",
-    "build.gradle",
-    "requirements.txt",
-    "pyproject.toml",
-    "Gemfile",
-  ];
-
-  for (const file of candidates) {
-    const candidate = path.join(serviceDir, file);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return null;
-}
-
-async function detectPort(serviceDir: string): Promise<number | null> {
-  const pkgPath = path.join(serviceDir, "package.json");
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-    const start: string = pkg?.scripts?.start ?? pkg?.scripts?.dev ?? "";
-    const portMatch = start.match(/(?:PORT=|--port\s+|:\s*)(\d{4,5})/);
-    if (portMatch?.[1]) return parseInt(portMatch[1], 10);
-  } catch {
-    // Ignore malformed package metadata
-  }
-
-  const envPath = path.join(serviceDir, ".env");
-  try {
-    const env = fs.readFileSync(envPath, "utf-8");
-    const portMatch = env.match(/^PORT=(\d+)/m);
-    if (portMatch?.[1]) return parseInt(portMatch[1], 10);
-  } catch {
-    // Ignore missing env files
-  }
-
-  return null;
-}
-
-function findServiceForFile(
-  filePath: string,
-  serviceRoots: string[],
-  absRoot: string
-): string | null {
-  let bestMatch: string | null = null;
-  let bestLen = 0;
-
-  for (const root of serviceRoots) {
-    if (filePath.startsWith(root) && root.length > bestLen) {
-      bestLen = root.length;
-      bestMatch = root;
-    }
-  }
-
-  if (!bestMatch) return null;
-  const relPath = path.relative(absRoot, bestMatch);
-  return relPath.replace(/[/\\]/g, "-") || "root";
-}
-
-function findNodeId(nodes: Map<string, GraphNode>, name: string): string | null {
-  if (nodes.has(name)) return name;
-  for (const [id, node] of nodes) {
-    if (node.name === name) return id;
-  }
-  return null;
-}
-
-function findNodeByPackageName(nodes: Map<string, GraphNode>, packageName: string): string | null {
-  const bare = packageName.replace(/^@[^/]+\//, "");
-  for (const [id, node] of nodes) {
-    if (node.type === "service" && (node.name === bare || node.name === packageName)) return id;
-  }
-  return null;
-}
-
-function addEdge(edges: GraphEdge[], edge: GraphEdge) {
-  const existing = edges.find(
-    (candidate) =>
-      candidate.from === edge.from &&
-      candidate.to === edge.to &&
-      candidate.type === edge.type
-  );
-
-  if (!existing) {
-    edges.push(edge);
-    return;
-  }
-
-  if (confidenceRank(edge.confidence) > confidenceRank(existing.confidence)) {
-    existing.confidence = edge.confidence;
-  }
-
-  existing.evidence = mergeEvidence(existing.evidence, edge.evidence);
-}
-
-function confidenceRank(confidence: Confidence): number {
-  if (confidence === "high") return 3;
-  if (confidence === "medium") return 2;
-  return 1;
-}
-
-function deduplicateEdges(edges: GraphEdge[]): GraphEdge[] {
-  const seen = new Set<string>();
-  return edges.filter((edge) => {
-    const key = `${edge.from}->${edge.to}->${edge.type}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function mergeEvidence(
-  existing: GraphEvidence[] | undefined,
-  incoming: GraphEvidence[] | undefined
-): GraphEvidence[] {
-  const merged = [...(existing ?? [])];
-
-  for (const item of incoming ?? []) {
-    if (!merged.some((entry) => entry.kind === item.kind && entry.source === item.source && entry.detail === item.detail)) {
-      merged.push(item);
-    }
-  }
-
-  return merged;
-}
-
-function isDbImage(image: string): boolean {
-  const dbKeywords = ["postgres", "mysql", "mongodb", "redis", "elasticsearch", "cassandra", "sqlite"];
-  return dbKeywords.some((keyword) => image.toLowerCase().includes(keyword));
-}
-
-function consolidateNodes(nodes: Map<string, GraphNode>, edges: GraphEdge[]) {
-  mergeDuplicateNamedNodes(nodes, edges);
-
-  const canonicalNodes = new Map<string, string>();
-  for (const [id, node] of nodes) {
-    if (node.type === "database" || node.type === "saas") {
-      canonicalNodes.set(node.name, id);
-    }
-  }
-
-  for (const [id, node] of [...nodes.entries()]) {
-    if (node.type !== "external") continue;
-
-    const canonical = canonicalNodes.get(node.name);
-    if (!canonical || canonical === id) continue;
-
-    for (const edge of edges) {
-      if (edge.from === id) edge.from = canonical;
-      if (edge.to === id) edge.to = canonical;
-    }
-
-    const canonicalNode = nodes.get(canonical);
-    if (canonicalNode) {
-      canonicalNode.evidence = mergeEvidence(canonicalNode.evidence, node.evidence);
-    }
-
-    nodes.delete(id);
-  }
-}
-
-function mergeDuplicateNamedNodes(nodes: Map<string, GraphNode>, edges: GraphEdge[]) {
-  const groups = new Map<string, Array<[string, GraphNode]>>();
-
-  for (const entry of nodes.entries()) {
-    const [id, node] = entry;
-    const key = `${node.type}:${node.name.toLowerCase()}`;
-    const group = groups.get(key) ?? [];
-    group.push([id, node]);
-    groups.set(key, group);
-  }
-
-  for (const [, group] of groups) {
-    if (group.length < 2) continue;
-
-    const canonical = [...group].sort((a, b) => nodePriority(b[1]) - nodePriority(a[1]))[0];
-    if (!canonical) continue;
-    const [canonicalId, canonicalNode] = canonical;
-
-    for (const [id, node] of group) {
-      if (id === canonicalId) continue;
-
-      if (!canonicalNode.port && node.port) canonicalNode.port = node.port;
-      if ((!canonicalNode.path || canonicalNode.path === ".") && node.path) canonicalNode.path = node.path;
-      if (!canonicalNode.framework && node.framework) canonicalNode.framework = node.framework;
-      canonicalNode.endpoints = uniqueStrings([...(canonicalNode.endpoints ?? []), ...(node.endpoints ?? [])]);
-      canonicalNode.techStack = uniqueStrings([...(canonicalNode.techStack ?? []), ...(node.techStack ?? [])]);
-      canonicalNode.evidence = mergeEvidence(canonicalNode.evidence, node.evidence);
-
-      for (const edge of edges) {
-        if (edge.from === id) edge.from = canonicalId;
-        if (edge.to === id) edge.to = canonicalId;
-      }
-
-      nodes.delete(id);
-    }
-  }
-}
-
-function nodePriority(node: GraphNode): number {
-  let score = 0;
-  if (node.path && node.path !== ".") score += 4;
-  if (node.framework) score += 3;
-  if (node.port) score += 2;
-  if (node.endpoints.length > 0) score += 2;
-  score += (node.evidence?.length ?? 0) * 0.1;
-  return score;
-}
-
-function uniqueStrings(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))];
+  return builder.build({ repo, scannedAt, languageBreakdown: languageCounts, totalFiles });
 }

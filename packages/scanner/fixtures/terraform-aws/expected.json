@@ -1,0 +1,86 @@
+{
+  "description": "AWS stack: VPC, public ALB with an open security group, ECS service, private Postgres, S3, SQS and a Lambda.",
+  "nodes": [
+    {
+      "id": "tf:aws_vpc.main",
+      "type": "network"
+    },
+    {
+      "id": "tf:aws_lb.web",
+      "type": "loadbalancer"
+    },
+    {
+      "id": "tf:aws_ecs_service.api",
+      "type": "service"
+    },
+    {
+      "id": "tf:aws_db_instance.main",
+      "type": "database"
+    },
+    {
+      "id": "tf:aws_s3_bucket.assets",
+      "type": "storage"
+    },
+    {
+      "id": "tf:aws_sqs_queue.jobs",
+      "type": "queue"
+    },
+    {
+      "id": "tf:aws_lambda_function.worker",
+      "type": "function"
+    },
+    {
+      "id": "internet",
+      "type": "network"
+    },
+    {
+      "id": "vendor:aws",
+      "type": "saas"
+    }
+  ],
+  "edges": [
+    {
+      "from": "internet",
+      "to": "tf:aws_lb.web",
+      "type": "network"
+    },
+    {
+      "from": "tf:aws_lb.web",
+      "to": "tf:aws_ecs_service.api",
+      "type": "network"
+    },
+    {
+      "from": "tf:aws_ecs_service.api",
+      "to": "tf:aws_db_instance.main",
+      "type": "database"
+    },
+    {
+      "from": "tf:aws_ecs_service.api",
+      "to": "tf:aws_s3_bucket.assets",
+      "type": "storage"
+    },
+    {
+      "from": "tf:aws_ecs_service.api",
+      "to": "vendor:aws",
+      "type": "http"
+    },
+    {
+      "from": "tf:aws_lambda_function.worker",
+      "to": "tf:aws_sqs_queue.jobs",
+      "type": "queue"
+    },
+    {
+      "from": "tf:aws_lambda_function.worker",
+      "to": "vendor:aws",
+      "type": "http"
+    }
+  ],
+  "vendors": [
+    "aws"
+  ],
+  "dataClasses": [],
+  "publicNodes": [
+    "tf:aws_lb.web",
+    "internet"
+  ]
+}

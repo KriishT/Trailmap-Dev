@@ -1,0 +1,11 @@
+{
+  "name": "trap",
+  "scripts": { "start": "node dist/server.js" },
+  "dependencies": {
+    "express": "^4.19.0",
+    "stripe": "^14.0.0",
+    "pg": "^8.11.0",
+    "redis": "^4.6.0",
+    "@sendgrid/mail": "^8.0.0"
+  }
+}

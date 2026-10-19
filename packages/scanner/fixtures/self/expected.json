@@ -1,0 +1,31 @@
+{
+  "description": "This repository scanned by its own scanner. A regression guard: the original scanner reported ~17 phantom edges here (regex definitions matching themselves, an .env.example placeholder, workspace configs typed as services).",
+  "mode": "regression",
+  "source": "../../../..",
+  "nodeTypes": {
+    "service:apps/web": "service",
+    "service:apps/worker": "service",
+    "service:packages/ui": "library",
+    "service:packages/typescript-config": "library",
+    "service:packages/eslint-config": "library",
+    "service:packages/scanner": "library",
+    "service:packages/graph": "library"
+  },
+  "mustHave": [
+    { "from": "service:apps/web", "to": "vendor:supabase", "type": "http" },
+    { "from": "service:apps/worker", "to": "vendor:supabase", "type": "http" },
+    { "from": "service:apps/web", "to": "vendor:github", "type": "http" },
+    { "from": "service:apps/worker", "to": "vendor:github", "type": "http" },
+    { "from": "service:apps/worker", "to": "service:packages/pipeline", "type": "import" },
+    { "from": "service:apps/worker", "to": "service:packages/scanner", "type": "import" },
+    { "from": "service:apps/web", "to": "service:packages/graph", "type": "import" },
+    { "from": "service:packages/scanner", "to": "service:packages/graph", "type": "import" }
+  ],
+  "forbidden": [
+    "^service:[^>]*>(db|queue|storage):",
+    "^service:[^>]*>vendor:(?!github$|supabase$)",
+    ">ext:twilio",
+    "^service:packages/scanner>vendor:",
+    "^service:packages/scanner>(db|queue|storage):"
+  ]
+}

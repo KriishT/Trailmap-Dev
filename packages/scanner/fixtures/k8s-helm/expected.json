@@ -1,0 +1,67 @@
+{
+  "description": "Kubernetes manifests plus a Helm chart wired together through env vars. No application source in the repo.",
+  "nodes": [
+    {
+      "id": "deploy:frontend",
+      "type": "service"
+    },
+    {
+      "id": "deploy:api",
+      "type": "service"
+    },
+    {
+      "id": "deploy:worker",
+      "type": "service"
+    },
+    {
+      "id": "db:postgres",
+      "type": "database"
+    },
+    {
+      "id": "db:redis",
+      "type": "database"
+    },
+    {
+      "id": "internet",
+      "type": "network"
+    }
+  ],
+  "edges": [
+    {
+      "from": "deploy:frontend",
+      "to": "deploy:api",
+      "type": "http"
+    },
+    {
+      "from": "deploy:api",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "deploy:api",
+      "to": "db:redis",
+      "type": "database"
+    },
+    {
+      "from": "deploy:worker",
+      "to": "deploy:api",
+      "type": "http"
+    },
+    {
+      "from": "deploy:worker",
+      "to": "db:redis",
+      "type": "database"
+    },
+    {
+      "from": "internet",
+      "to": "deploy:frontend",
+      "type": "network"
+    }
+  ],
+  "vendors": [],
+  "dataClasses": [],
+  "publicNodes": [
+    "deploy:frontend",
+    "internet"
+  ]
+}

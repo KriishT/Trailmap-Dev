@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "note": "Third-party vendors / subprocessors. 'match' lists what appears in source (import specifiers or namespaces); 'manifest' lists package names as written in dependency manifests. 'data' is what the vendor typically processes and is only ever 'possible' evidence on its own.",
+  "vendors": [
+    {
+      "id": "stripe", "name": "Stripe", "category": "payments", "website": "https://stripe.com",
+      "data": ["PAN", "PII"],
+      "hosts": ["api.stripe.com", "js.stripe.com", "files.stripe.com"],
+      "envVars": ["STRIPE_SECRET_KEY", "STRIPE_API_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"],
+      "match": { "npm": ["stripe", "@stripe/stripe-js", "@stripe/react-stripe-js"], "python": ["stripe"], "go": ["github.com/stripe/stripe-go"], "java": ["com.stripe"], "cs": ["Stripe"], "ruby": ["stripe"] },
+      "manifest": { "npm": ["stripe", "@stripe/stripe-js", "@stripe/react-stripe-js"], "pypi": ["stripe"], "go": ["github.com/stripe/stripe-go"], "maven": ["com.stripe:stripe-java"], "nuget": ["Stripe.net"], "gems": ["stripe"] },
+      "constants": ["Stripe"],
+      "calls": [
+        { "class": "PAN", "ids": ["paymentMethods", "paymentIntents", "PaymentMethod", "PaymentIntent", "cardElement", "tokens", "Token", "setupIntents", "SetupIntent"] },
+        { "class": "PII", "ids": ["customers", "Customer"] }
+      ]
+    },
+    {
+      "id": "paypal", "name": "PayPal", "category": "payments", "website": "https://www.paypal.com",
+      "data": ["PAN", "PII"],
+      "hosts": ["api-m.paypal.com", "api.paypal.com", "api-m.sandbox.paypal.com"],
+      "envVars": ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"],
+      "match": { "npm": ["@paypal/checkout-server-sdk", "@paypal/paypal-js", "paypal-rest-sdk"], "python": ["paypalrestsdk", "paypalcheckoutsdk"], "go": ["github.com/plutov/paypal"], "java": ["com.paypal"], "cs": ["PayPal"], "ruby": ["paypal-sdk-rest"] },
+      "manifest": { "npm": ["@paypal/checkout-server-sdk", "@paypal/paypal-js", "paypal-rest-sdk"], "pypi": ["paypalrestsdk"], "maven": ["com.paypal.sdk:rest-api-sdk"], "nuget": ["PayPalCheckoutSdk"], "gems": ["paypal-sdk-rest"] },
+      "constants": ["PayPal"], "calls": []
+    },
+    {
+      "id": "braintree", "name": "Braintree", "category": "payments", "website": "https://www.braintreepayments.com",
+      "data": ["PAN", "PII"],
+      "hosts": ["api.braintreegateway.com"],
+      "envVars": ["BRAINTREE_MERCHANT_ID", "BRAINTREE_PRIVATE_KEY", "BRAINTREE_PUBLIC_KEY"],
+      "match": { "npm": ["braintree", "braintree-web"], "python": ["braintree"], "go": ["github.com/braintree-go/braintree-go"], "java": ["com.braintreegateway"], "cs": ["Braintree"], "ruby": ["braintree"] },
+      "manifest": { "npm": ["braintree", "braintree-web"], "pypi": ["braintree"], "maven": ["com.braintreepayments.gateway:braintree-java"], "nuget": ["Braintree"], "gems": ["braintree"] },
+      "constants": ["Braintree"], "calls": []
+    },
+    {
+      "id": "adyen", "name": "Adyen", "category": "payments", "website": "https://www.adyen.com",
+      "data": ["PAN", "PII"],
+      "hosts": ["checkout-test.adyen.com", "checkout-live.adyenpayments.com"],
+      "envVars": ["ADYEN_API_KEY", "ADYEN_MERCHANT_ACCOUNT"],
+      "match": { "npm": ["@adyen/api-library", "@adyen/adyen-web"], "python": ["Adyen"], "go": ["github.com/adyen/adyen-go-api-library"], "java": ["com.adyen"], "cs": ["Adyen"], "ruby": ["adyen-ruby-api-library"] },
+      "manifest": { "npm": ["@adyen/api-library"], "pypi": ["Adyen"], "maven": ["com.adyen:adyen-java-api-library"], "nuget": ["Adyen"], "gems": ["adyen-ruby-api-library"] },
+      "constants": ["Adyen"], "calls": []
+    },
+    {
+      "id": "plaid", "name": "Plaid", "category": "banking", "website": "https://plaid.com",
+      "data": ["PII"],
+      "hosts": ["production.plaid.com", "sandbox.plaid.com"],
+      "envVars": ["PLAID_CLIENT_ID", "PLAID_SECRET"],
+      "match": { "npm": ["plaid", "react-plaid-link"], "python": ["plaid"], "go": ["github.com/plaid/plaid-go"], "java": ["com.plaid"], "cs": ["Going.Plaid"], "ruby": ["plaid"] },
+      "manifest": { "npm": ["plaid"], "pypi": ["plaid-python"], "gems": ["plaid"] },
+      "constants": ["Plaid"], "calls": []
+    },
+    {
+      "id": "twilio", "name": "Twilio", "category": "messaging", "website": "https://www.twilio.com",
+      "data": ["PII"],
+      "hosts": ["api.twilio.com", "verify.twilio.com"],
+      "envVars": ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_API_KEY", "TWILIO_API_SECRET", "TWILIO_PHONE_NUMBER"],
+      "match": { "npm": ["twilio"], "python": ["twilio"], "go": ["github.com/twilio/twilio-go"], "java": ["com.twilio"], "cs": ["Twilio"], "ruby": ["twilio-ruby"] },
+      "manifest": { "npm": ["twilio"], "pypi": ["twilio"], "go": ["github.com/twilio/twilio-go"], "maven": ["com.twilio.sdk:twilio"], "nuget": ["Twilio"], "gems": ["twilio-ruby"] },
+      "constants": ["Twilio"],
+      "calls": [{ "class": "PII", "ids": ["messages", "calls", "verifications", "Messages", "Calls"] }]
+    },
+    {
+      "id": "sendgrid", "name": "SendGrid", "category": "email", "website": "https://sendgrid.com",
+      "data": ["PII"],
+      "hosts": ["api.sendgrid.com"],
+      "envVars": ["SENDGRID_API_KEY"],
+      "match": { "npm": ["@sendgrid/mail", "@sendgrid/client", "sendgrid"], "python": ["sendgrid"], "go": ["github.com/sendgrid/sendgrid-go"], "java": ["com.sendgrid"], "cs": ["SendGrid"], "ruby": ["sendgrid-ruby"] },
+      "manifest": { "npm": ["@sendgrid/mail", "@sendgrid/client", "sendgrid"], "pypi": ["sendgrid"], "go": ["github.com/sendgrid/sendgrid-go"], "maven": ["com.sendgrid:sendgrid-java"], "nuget": ["SendGrid"], "gems": ["sendgrid-ruby"] },
+      "constants": ["SendGrid"], "calls": []
+    },
+    {
+      "id": "mailgun", "name": "Mailgun", "category": "email", "website": "https://www.mailgun.com",
+      "data": ["PII"],
+      "hosts": ["api.mailgun.net", "api.eu.mailgun.net"],
+      "envVars": ["MAILGUN_API_KEY", "MAILGUN_DOMAIN"],
+      "match": { "npm": ["mailgun.js", "mailgun-js"], "python": ["mailgun"], "go": ["github.com/mailgun/mailgun-go"], "java": ["com.mailgun"], "cs": ["Mailgun"], "ruby": ["mailgun-ruby"] },
+      "manifest": { "npm": ["mailgun.js", "mailgun-js"], "gems": ["mailgun-ruby"] },
+      "constants": ["Mailgun"], "calls": []
+    },
+    {
+      "id": "postmark", "name": "Postmark", "category": "email", "website": "https://postmarkapp.com",
+      "data": ["PII"],
+      "hosts": ["api.postmarkapp.com"],
+      "envVars": ["POSTMARK_API_TOKEN", "POSTMARK_SERVER_TOKEN"],
+      "match": { "npm": ["postmark"], "python": ["postmarker"], "go": ["github.com/keighl/postmark"], "java": ["com.wildbit.java.postmark"], "cs": ["PostmarkDotNet"], "ruby": ["postmark"] },
+      "manifest": { "npm": ["postmark"], "pypi": ["postmarker"], "gems": ["postmark"] },
+      "constants": ["Postmark"], "calls": []
+    },
+    {
+      "id": "resend", "name": "Resend", "category": "email", "website": "https://resend.com",
+      "data": ["PII"],
+      "hosts": ["api.resend.com"],
+      "envVars": ["RESEND_API_KEY"],
+      "match": { "npm": ["resend"], "python": ["resend"], "go": ["github.com/resend/resend-go"], "java": ["com.resend"], "cs": ["Resend"], "ruby": ["resend"] },
+      "manifest": { "npm": ["resend"], "pypi": ["resend"], "gems": ["resend"] },
+      "constants": ["Resend"], "calls": []
+    },
+    {
+      "id": "segment", "name": "Segment", "category": "analytics", "website": "https://segment.com",
+      "data": ["PII"],
+      "hosts": ["api.segment.io", "cdn.segment.com"],
+      "envVars": ["SEGMENT_WRITE_KEY", "NEXT_PUBLIC_SEGMENT_WRITE_KEY"],
+      "match": { "npm": ["analytics-node", "@segment/analytics-node", "@segment/analytics-next"], "python": ["segment", "analytics"], "go": ["github.com/segmentio/analytics-go"], "java": ["com.segment.analytics"], "cs": ["Segment"], "ruby": ["analytics-ruby"] },
+      "manifest": { "npm": ["analytics-node", "@segment/analytics-node", "@segment/analytics-next"], "pypi": ["analytics-python"], "go": ["github.com/segmentio/analytics-go"], "gems": ["analytics-ruby"] },
+      "constants": ["Segment"],
+      "calls": [{ "class": "PII", "ids": ["identify"], "withArgs": ["email", "phone", "name", "firstName", "lastName", "first_name", "last_name"] }]
+    },
+    {
+      "id": "mixpanel", "name": "Mixpanel", "category": "analytics", "website": "https://mixpanel.com",
+      "data": ["PII"],
+      "hosts": ["api.mixpanel.com", "api-eu.mixpanel.com"],
+      "envVars": ["MIXPANEL_TOKEN", "MIXPANEL_PROJECT_TOKEN"],
+      "match": { "npm": ["mixpanel", "mixpanel-browser"], "python": ["mixpanel"], "go": ["github.com/mixpanel/mixpanel-go"], "java": ["com.mixpanel"], "cs": ["Mixpanel"], "ruby": ["mixpanel-ruby"] },
+      "manifest": { "npm": ["mixpanel", "mixpanel-browser"], "pypi": ["mixpanel"], "gems": ["mixpanel-ruby"] },
+      "constants": ["Mixpanel"],
+      "calls": [{ "class": "PII", "ids": ["track", "people", "identify"], "withArgs": ["email", "phone", "name"] }]
+    },
+    {
+      "id": "amplitude", "name": "Amplitude", "category": "analytics", "website": "https://amplitude.com",
+      "data": ["PII"],
+      "hosts": ["api2.amplitude.com", "api.amplitude.com"],
+      "envVars": ["AMPLITUDE_API_KEY"],
+      "match": { "npm": ["@amplitude/analytics-node", "@amplitude/analytics-browser", "amplitude-js"], "python": ["amplitude"], "go": ["github.com/amplitude/analytics-go"], "java": ["com.amplitude"], "cs": ["Amplitude"] },
+      "manifest": { "npm": ["@amplitude/analytics-node", "@amplitude/analytics-browser"], "pypi": ["amplitude-analytics"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "posthog", "name": "PostHog", "category": "analytics", "website": "https://posthog.com",
+      "data": ["PII"],
+      "hosts": ["app.posthog.com", "eu.posthog.com", "us.i.posthog.com"],
+      "envVars": ["POSTHOG_API_KEY", "NEXT_PUBLIC_POSTHOG_KEY"],
+      "match": { "npm": ["posthog-node", "posthog-js"], "python": ["posthog"], "go": ["github.com/posthog/posthog-go"], "java": ["com.posthog"], "cs": ["PostHog"], "ruby": ["posthog-ruby"] },
+      "manifest": { "npm": ["posthog-node", "posthog-js"], "pypi": ["posthog"], "gems": ["posthog-ruby"] },
+      "constants": ["PostHog"], "calls": []
+    },
+    {
+      "id": "datadog", "name": "Datadog", "category": "observability", "website": "https://www.datadoghq.com",
+      "data": [],
+      "hosts": ["api.datadoghq.com", "api.datadoghq.eu"],
+      "envVars": ["DD_API_KEY", "DATADOG_API_KEY", "DD_APP_KEY"],
+      "match": { "npm": ["dd-trace", "@datadog/datadog-api-client", "hot-shots"], "python": ["ddtrace", "datadog"], "go": ["gopkg.in/DataDog/dd-trace-go", "github.com/DataDog/datadog-go"], "java": ["datadog.trace", "com.datadoghq"], "cs": ["Datadog.Trace", "StatsdClient"], "ruby": ["ddtrace", "dogapi"] },
+      "manifest": { "npm": ["dd-trace", "@datadog/datadog-api-client"], "pypi": ["ddtrace", "datadog"], "gems": ["ddtrace", "dogapi"] },
+      "constants": ["Datadog"], "calls": []
+    },
+    {
+      "id": "sentry", "name": "Sentry", "category": "observability", "website": "https://sentry.io",
+      "data": ["PII"],
+      "hosts": ["sentry.io"],
+      "envVars": ["SENTRY_DSN", "NEXT_PUBLIC_SENTRY_DSN", "SENTRY_AUTH_TOKEN"],
+      "match": { "npm": ["@sentry/node", "@sentry/nextjs", "@sentry/react", "@sentry/browser", "@sentry/serverless"], "python": ["sentry_sdk"], "go": ["github.com/getsentry/sentry-go"], "java": ["io.sentry"], "cs": ["Sentry"], "ruby": ["sentry-ruby", "sentry-rails"] },
+      "manifest": { "npm": ["@sentry/node", "@sentry/nextjs", "@sentry/react"], "pypi": ["sentry-sdk"], "go": ["github.com/getsentry/sentry-go"], "maven": ["io.sentry:sentry"], "nuget": ["Sentry"], "gems": ["sentry-ruby", "sentry-rails"] },
+      "constants": ["Sentry"], "calls": []
+    },
+    {
+      "id": "newrelic", "name": "New Relic", "category": "observability", "website": "https://newrelic.com",
+      "data": [],
+      "hosts": ["api.newrelic.com", "log-api.newrelic.com"],
+      "envVars": ["NEW_RELIC_LICENSE_KEY", "NEW_RELIC_APP_NAME"],
+      "match": { "npm": ["newrelic"], "python": ["newrelic"], "go": ["github.com/newrelic/go-agent"], "java": ["com.newrelic"], "cs": ["NewRelic"], "ruby": ["newrelic_rpm"] },
+      "manifest": { "npm": ["newrelic"], "pypi": ["newrelic"], "gems": ["newrelic_rpm"] },
+      "constants": ["NewRelic"], "calls": []
+    },
+    {
+      "id": "pagerduty", "name": "PagerDuty", "category": "incident-management", "website": "https://www.pagerduty.com",
+      "data": [],
+      "hosts": ["events.pagerduty.com", "api.pagerduty.com"],
+      "envVars": ["PAGERDUTY_API_KEY", "PAGERDUTY_ROUTING_KEY"],
+      "match": { "npm": ["@pagerduty/pdjs", "node-pagerduty"], "python": ["pdpyras", "pagerduty"], "go": ["github.com/PagerDuty/go-pagerduty"], "java": ["com.pagerduty"] },
+      "manifest": { "npm": ["@pagerduty/pdjs"], "pypi": ["pdpyras"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "slack", "name": "Slack", "category": "collaboration", "website": "https://slack.com",
+      "data": ["PII"],
+      "hosts": ["slack.com", "hooks.slack.com"],
+      "envVars": ["SLACK_BOT_TOKEN", "SLACK_WEBHOOK_URL", "SLACK_SIGNING_SECRET"],
+      "match": { "npm": ["@slack/web-api", "@slack/bolt", "@slack/webhook"], "python": ["slack_sdk", "slack_bolt"], "go": ["github.com/slack-go/slack"], "java": ["com.slack.api"], "cs": ["SlackNet"], "ruby": ["slack-ruby-client"] },
+      "manifest": { "npm": ["@slack/web-api", "@slack/bolt", "@slack/webhook"], "pypi": ["slack-sdk", "slack-bolt"], "gems": ["slack-ruby-client"] },
+      "constants": ["Slack"], "calls": []
+    },
+    {
+      "id": "intercom", "name": "Intercom", "category": "customer-support", "website": "https://www.intercom.com",
+      "data": ["PII"],
+      "hosts": ["api.intercom.io"],
+      "envVars": ["INTERCOM_ACCESS_TOKEN", "INTERCOM_APP_ID"],
+      "match": { "npm": ["intercom-client", "@intercom/messenger-js-sdk"], "python": ["intercom"], "go": ["github.com/intercom/intercom-go"], "java": ["io.intercom"], "ruby": ["intercom"] },
+      "manifest": { "npm": ["intercom-client"], "pypi": ["python-intercom"], "gems": ["intercom"] },
+      "constants": ["Intercom"], "calls": []
+    },
+    {
+      "id": "hubspot", "name": "HubSpot", "category": "crm", "website": "https://www.hubspot.com",
+      "data": ["PII"],
+      "hosts": ["api.hubapi.com", "api.hubspot.com"],
+      "envVars": ["HUBSPOT_API_KEY", "HUBSPOT_ACCESS_TOKEN"],
+      "match": { "npm": ["@hubspot/api-client"], "python": ["hubspot"], "go": ["github.com/belong-inc/go-hubspot"], "java": ["com.hubspot"], "cs": ["HubSpot"], "ruby": ["hubspot-api-client"] },
+      "manifest": { "npm": ["@hubspot/api-client"], "pypi": ["hubspot-api-client"], "gems": ["hubspot-api-client"] },
+      "constants": ["Hubspot", "HubSpot"], "calls": []
+    },
+    {
+      "id": "salesforce", "name": "Salesforce", "category": "crm", "website": "https://www.salesforce.com",
+      "data": ["PII"],
+      "hosts": ["login.salesforce.com", "test.salesforce.com"],
+      "envVars": ["SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET", "SF_USERNAME"],
+      "match": { "npm": ["jsforce"], "python": ["simple_salesforce"], "go": ["github.com/simpleforce/simpleforce"], "java": ["com.salesforce"], "ruby": ["restforce"] },
+      "manifest": { "npm": ["jsforce"], "pypi": ["simple-salesforce"], "gems": ["restforce"] },
+      "constants": ["Restforce"], "calls": []
+    },
+    {
+      "id": "zendesk", "name": "Zendesk", "category": "customer-support", "website": "https://www.zendesk.com",
+      "data": ["PII"],
+      "hosts": ["zendesk.com"],
+      "envVars": ["ZENDESK_API_TOKEN", "ZENDESK_SUBDOMAIN"],
+      "match": { "npm": ["node-zendesk"], "python": ["zenpy"], "go": ["github.com/nukosuke/go-zendesk"], "ruby": ["zendesk_api"] },
+      "manifest": { "npm": ["node-zendesk"], "pypi": ["zenpy"], "gems": ["zendesk_api"] },
+      "constants": ["ZendeskAPI"], "calls": []
+    },
+    {
+      "id": "auth0", "name": "Auth0", "category": "identity", "website": "https://auth0.com",
+      "data": ["PII", "CREDENTIALS"],
+      "hosts": ["auth0.com"],
+      "envVars": ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_ISSUER_BASE_URL"],
+      "match": { "npm": ["auth0", "@auth0/nextjs-auth0", "@auth0/auth0-react", "express-openid-connect"], "python": ["auth0"], "go": ["github.com/auth0/go-auth0"], "java": ["com.auth0"], "cs": ["Auth0"], "ruby": ["auth0", "omniauth-auth0"] },
+      "manifest": { "npm": ["auth0", "@auth0/nextjs-auth0", "@auth0/auth0-react"], "pypi": ["auth0-python"], "maven": ["com.auth0:auth0"], "nuget": ["Auth0.ManagementApi"], "gems": ["auth0"] },
+      "constants": ["Auth0"], "calls": []
+    },
+    {
+      "id": "okta", "name": "Okta", "category": "identity", "website": "https://www.okta.com",
+      "data": ["PII", "CREDENTIALS"],
+      "hosts": ["okta.com", "oktapreview.com"],
+      "envVars": ["OKTA_DOMAIN", "OKTA_CLIENT_ID", "OKTA_CLIENT_SECRET", "OKTA_API_TOKEN"],
+      "match": { "npm": ["@okta/okta-sdk-nodejs", "@okta/okta-auth-js", "@okta/okta-react"], "python": ["okta"], "go": ["github.com/okta/okta-sdk-golang"], "java": ["com.okta"], "cs": ["Okta"], "ruby": ["okta"] },
+      "manifest": { "npm": ["@okta/okta-sdk-nodejs", "@okta/okta-auth-js"], "pypi": ["okta"], "gems": ["okta"] },
+      "constants": ["Okta"], "calls": []
+    },
+    {
+      "id": "clerk", "name": "Clerk", "category": "identity", "website": "https://clerk.com",
+      "data": ["PII", "CREDENTIALS"],
+      "hosts": ["api.clerk.com", "clerk.com"],
+      "envVars": ["CLERK_SECRET_KEY", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_PUBLISHABLE_KEY"],
+      "match": { "npm": ["@clerk/nextjs", "@clerk/clerk-sdk-node", "@clerk/backend", "@clerk/clerk-react"], "python": ["clerk_backend_api"], "go": ["github.com/clerk/clerk-sdk-go"] },
+      "manifest": { "npm": ["@clerk/nextjs", "@clerk/clerk-sdk-node", "@clerk/backend"], "go": ["github.com/clerk/clerk-sdk-go"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "firebase", "name": "Firebase", "category": "backend", "website": "https://firebase.google.com",
+      "data": ["PII"],
+      "hosts": ["firebaseio.com", "firestore.googleapis.com", "fcm.googleapis.com"],
+      "envVars": ["FIREBASE_API_KEY", "FIREBASE_PROJECT_ID", "FIREBASE_DATABASE_URL", "NEXT_PUBLIC_FIREBASE_API_KEY"],
+      "match": { "npm": ["firebase", "firebase-admin", "firebase-functions"], "python": ["firebase_admin"], "go": ["firebase.google.com/go"], "java": ["com.google.firebase"], "cs": ["FirebaseAdmin"], "ruby": ["firebase"] },
+      "manifest": { "npm": ["firebase", "firebase-admin"], "pypi": ["firebase-admin"], "go": ["firebase.google.com/go"], "maven": ["com.google.firebase:firebase-admin"], "nuget": ["FirebaseAdmin"], "gems": ["firebase"] },
+      "constants": ["Firebase"], "calls": []
+    },
+    {
+      "id": "supabase", "name": "Supabase", "category": "backend", "website": "https://supabase.com",
+      "data": ["PII", "CREDENTIALS"],
+      "hosts": ["supabase.co", "supabase.com"],
+      "envVars": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+      "match": { "npm": ["@supabase/supabase-js", "@supabase/ssr", "@supabase/auth-helpers-nextjs"], "python": ["supabase"], "go": ["github.com/supabase-community/supabase-go"], "java": ["io.supabase"], "cs": ["Supabase"], "ruby": ["supabase"] },
+      "manifest": { "npm": ["@supabase/supabase-js", "@supabase/ssr"], "pypi": ["supabase"], "go": ["github.com/supabase-community/supabase-go"], "nuget": ["Supabase"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "openai", "name": "OpenAI", "category": "ai", "website": "https://openai.com",
+      "data": ["PII"],
+      "hosts": ["api.openai.com"],
+      "envVars": ["OPENAI_API_KEY"],
+      "match": { "npm": ["openai"], "python": ["openai"], "go": ["github.com/sashabaranov/go-openai", "github.com/openai/openai-go"], "java": ["com.openai", "com.theokanning.openai"], "cs": ["OpenAI"], "ruby": ["ruby-openai", "openai"] },
+      "manifest": { "npm": ["openai"], "pypi": ["openai"], "go": ["github.com/sashabaranov/go-openai"], "nuget": ["OpenAI"], "gems": ["ruby-openai"] },
+      "constants": ["OpenAI"], "calls": []
+    },
+    {
+      "id": "anthropic", "name": "Anthropic", "category": "ai", "website": "https://www.anthropic.com",
+      "data": ["PII"],
+      "hosts": ["api.anthropic.com"],
+      "envVars": ["ANTHROPIC_API_KEY"],
+      "match": { "npm": ["@anthropic-ai/sdk"], "python": ["anthropic"], "go": ["github.com/anthropics/anthropic-sdk-go"], "java": ["com.anthropic"], "cs": ["Anthropic"], "ruby": ["anthropic"] },
+      "manifest": { "npm": ["@anthropic-ai/sdk"], "pypi": ["anthropic"], "go": ["github.com/anthropics/anthropic-sdk-go"], "gems": ["anthropic"] },
+      "constants": ["Anthropic"], "calls": []
+    },
+    {
+      "id": "algolia", "name": "Algolia", "category": "search", "website": "https://www.algolia.com",
+      "data": ["PII"],
+      "hosts": ["algolia.net", "algolianet.com"],
+      "envVars": ["ALGOLIA_APP_ID", "ALGOLIA_API_KEY", "ALGOLIA_ADMIN_KEY"],
+      "match": { "npm": ["algoliasearch", "react-instantsearch"], "python": ["algoliasearch"], "go": ["github.com/algolia/algoliasearch-client-go"], "java": ["com.algolia"], "cs": ["Algolia"], "ruby": ["algolia"] },
+      "manifest": { "npm": ["algoliasearch"], "pypi": ["algoliasearch"], "gems": ["algolia"] },
+      "constants": ["Algolia"], "calls": []
+    },
+    {
+      "id": "cloudinary", "name": "Cloudinary", "category": "media", "website": "https://cloudinary.com",
+      "data": ["PII"],
+      "hosts": ["api.cloudinary.com", "res.cloudinary.com"],
+      "envVars": ["CLOUDINARY_URL", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"],
+      "match": { "npm": ["cloudinary", "next-cloudinary"], "python": ["cloudinary"], "go": ["github.com/cloudinary/cloudinary-go"], "java": ["com.cloudinary"], "cs": ["CloudinaryDotNet"], "ruby": ["cloudinary"] },
+      "manifest": { "npm": ["cloudinary"], "pypi": ["cloudinary"], "gems": ["cloudinary"] },
+      "constants": ["Cloudinary"], "calls": []
+    },
+    {
+      "id": "pusher", "name": "Pusher", "category": "realtime", "website": "https://pusher.com",
+      "data": [],
+      "hosts": ["pusher.com", "pusherapp.com"],
+      "envVars": ["PUSHER_APP_ID", "PUSHER_KEY", "PUSHER_SECRET"],
+      "match": { "npm": ["pusher", "pusher-js"], "python": ["pusher"], "go": ["github.com/pusher/pusher-http-go"], "java": ["com.pusher"], "cs": ["PusherServer"], "ruby": ["pusher"] },
+      "manifest": { "npm": ["pusher", "pusher-js"], "pypi": ["pusher"], "gems": ["pusher"] },
+      "constants": ["Pusher"], "calls": []
+    },
+    {
+      "id": "launchdarkly", "name": "LaunchDarkly", "category": "feature-flags", "website": "https://launchdarkly.com",
+      "data": ["PII"],
+      "hosts": ["app.launchdarkly.com", "clientsdk.launchdarkly.com"],
+      "envVars": ["LAUNCHDARKLY_SDK_KEY", "LD_SDK_KEY"],
+      "match": { "npm": ["launchdarkly-node-server-sdk", "@launchdarkly/node-server-sdk", "launchdarkly-js-client-sdk"], "python": ["ldclient"], "go": ["github.com/launchdarkly/go-server-sdk"], "java": ["com.launchdarkly"], "cs": ["LaunchDarkly"], "ruby": ["launchdarkly-server-sdk"] },
+      "manifest": { "npm": ["launchdarkly-node-server-sdk", "@launchdarkly/node-server-sdk"], "pypi": ["launchdarkly-server-sdk"], "gems": ["launchdarkly-server-sdk"] },
+      "constants": ["LaunchDarkly"], "calls": []
+    },
+    {
+      "id": "aws", "name": "Amazon Web Services", "category": "cloud", "website": "https://aws.amazon.com",
+      "data": [],
+      "hosts": ["amazonaws.com"],
+      "envVars": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION"],
+      "match": { "npm": ["aws-sdk"], "python": ["boto3", "botocore"], "go": ["github.com/aws/aws-sdk-go"], "java": ["com.amazonaws", "software.amazon.awssdk"], "cs": ["Amazon"], "ruby": ["aws-sdk"] },
+      "manifest": { "npm": ["aws-sdk"], "pypi": ["boto3"], "go": ["github.com/aws/aws-sdk-go"], "maven": ["software.amazon.awssdk:bom"], "nuget": ["AWSSDK.Core"], "gems": ["aws-sdk"] },
+      "constants": ["Aws"], "calls": [],
+      "note": "Specific AWS services (S3, SQS, DynamoDB) are modelled as engines; this vendor covers generic SDK use."
+    },
+    {
+      "id": "gcp", "name": "Google Cloud", "category": "cloud", "website": "https://cloud.google.com",
+      "data": [],
+      "hosts": ["googleapis.com"],
+      "envVars": ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT"],
+      "match": { "npm": ["@google-cloud/storage", "@google-cloud/pubsub", "@google-cloud/firestore"], "python": ["google.cloud"], "go": ["cloud.google.com/go"], "java": ["com.google.cloud"], "cs": ["Google.Cloud"], "ruby": ["google-cloud"] },
+      "manifest": { "npm": ["@google-cloud/storage", "@google-cloud/pubsub"], "pypi": ["google-cloud-storage"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "azure", "name": "Microsoft Azure", "category": "cloud", "website": "https://azure.microsoft.com",
+      "data": [],
+      "hosts": ["windows.net", "azure.com"],
+      "envVars": ["AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_SECRET", "AZURE_STORAGE_CONNECTION_STRING"],
+      "match": { "npm": ["@azure/storage-blob", "@azure/identity", "@azure/service-bus"], "python": ["azure"], "go": ["github.com/Azure/azure-sdk-for-go"], "java": ["com.azure"], "cs": ["Azure"], "ruby": ["azure"] },
+      "manifest": { "npm": ["@azure/storage-blob", "@azure/identity"], "pypi": ["azure-storage-blob"], "nuget": ["Azure.Storage.Blobs"] },
+      "constants": [], "calls": []
+    },
+    {
+      "id": "github", "name": "GitHub", "category": "developer-tools", "website": "https://github.com",
+      "data": [],
+      "hosts": ["api.github.com"],
+      "envVars": ["GITHUB_TOKEN"],
+      "match": { "npm": ["@octokit/rest", "@octokit/core", "octokit"], "python": ["github"], "go": ["github.com/google/go-github"], "java": ["org.kohsuke.github"], "cs": ["Octokit"], "ruby": ["octokit"] },
+      "manifest": { "npm": ["@octokit/rest", "@octokit/core", "octokit"], "pypi": ["PyGithub"], "go": ["github.com/google/go-github"], "nuget": ["Octokit"], "gems": ["octokit"] },
+      "constants": ["Octokit"], "calls": []
+    },
+    {
+      "id": "shopify", "name": "Shopify", "category": "commerce", "website": "https://www.shopify.com",
+      "data": ["PII"],
+      "hosts": ["myshopify.com"],
+      "envVars": ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_ACCESS_TOKEN"],
+      "match": { "npm": ["@shopify/shopify-api", "shopify-api-node"], "python": ["shopify"], "go": ["github.com/bold-commerce/go-shopify"], "java": ["com.shopify"], "ruby": ["shopify_api"] },
+      "manifest": { "npm": ["@shopify/shopify-api"], "pypi": ["ShopifyAPI"], "gems": ["shopify_api"] },
+      "constants": ["ShopifyAPI"], "calls": []
+    }
+  ]
+}

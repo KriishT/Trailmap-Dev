@@ -1,0 +1,39 @@
+{
+  "description": "Spring Boot service with JPA on Postgres and an outbound REST client to Stripe.",
+  "nodes": [
+    {
+      "id": "service:.",
+      "type": "service"
+    },
+    {
+      "id": "db:postgres",
+      "type": "database"
+    },
+    {
+      "id": "vendor:stripe",
+      "type": "saas"
+    }
+  ],
+  "edges": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "service:.",
+      "to": "vendor:stripe",
+      "type": "http"
+    }
+  ],
+  "vendors": [
+    "stripe"
+  ],
+  "dataClasses": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "class": "PII"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "extends": "@trailmap/typescript-config/base.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src", "eval"],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+}

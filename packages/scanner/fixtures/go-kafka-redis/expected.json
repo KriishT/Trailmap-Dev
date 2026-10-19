@@ -1,0 +1,31 @@
+{
+  "description": "Go service producing and consuming Kafka and caching in Redis.",
+  "nodes": [
+    {
+      "id": "service:.",
+      "type": "service"
+    },
+    {
+      "id": "queue:kafka",
+      "type": "queue"
+    },
+    {
+      "id": "db:redis",
+      "type": "database"
+    }
+  ],
+  "edges": [
+    {
+      "from": "service:.",
+      "to": "queue:kafka",
+      "type": "queue"
+    },
+    {
+      "from": "service:.",
+      "to": "db:redis",
+      "type": "database"
+    }
+  ],
+  "vendors": [],
+  "dataClasses": []
+}

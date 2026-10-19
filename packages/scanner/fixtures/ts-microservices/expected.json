@@ -1,0 +1,92 @@
+{
+  "description": "Three TypeScript services wired by docker-compose, Postgres, Stripe and Segment.",
+  "nodes": [
+    {
+      "id": "service:services/gateway",
+      "type": "service"
+    },
+    {
+      "id": "service:services/orders",
+      "type": "service"
+    },
+    {
+      "id": "service:services/payments",
+      "type": "service"
+    },
+    {
+      "id": "db:postgres",
+      "type": "database"
+    },
+    {
+      "id": "vendor:stripe",
+      "type": "saas"
+    },
+    {
+      "id": "vendor:segment",
+      "type": "saas"
+    }
+  ],
+  "edges": [
+    {
+      "from": "service:services/gateway",
+      "to": "service:services/orders",
+      "type": "http"
+    },
+    {
+      "from": "service:services/gateway",
+      "to": "service:services/payments",
+      "type": "http"
+    },
+    {
+      "from": "service:services/orders",
+      "to": "service:services/payments",
+      "type": "http"
+    },
+    {
+      "from": "service:services/orders",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "vendor:stripe",
+      "type": "http"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "vendor:segment",
+      "type": "http"
+    }
+  ],
+  "vendors": [
+    "stripe",
+    "segment"
+  ],
+  "dataClasses": [
+    {
+      "from": "service:services/payments",
+      "to": "db:postgres",
+      "class": "PII"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "db:postgres",
+      "class": "PAN"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "vendor:stripe",
+      "class": "PAN"
+    },
+    {
+      "from": "service:services/payments",
+      "to": "vendor:segment",
+      "class": "PII"
+    }
+  ]
+}

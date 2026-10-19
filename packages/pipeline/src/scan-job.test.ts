@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { GRAPH_SCHEMA_VERSION } from "@trailmap/graph";
 import { scan } from "@trailmap/scanner";
 import { createTestDb, seedTwoOrgs, type TestDb } from "../../../supabase/tests/db";
 import { adminClient } from "../../../supabase/tests/pg-client";
@@ -88,7 +89,7 @@ describe("processNextJob", () => {
     ))[0]!;
     expect(snap.commit_sha).toBe("abc123");
     expect(snap.branch).toBe("main");
-    expect(snap.raw_json.meta.graphSchemaVersion).toBe(1);
+    expect(snap.raw_json.meta.graphSchemaVersion).toBe(GRAPH_SCHEMA_VERSION);
     expect(snap.raw_json.meta.repo).toBe("org-a/a");
 
     const repo = (await db.admin<{ last_scanned_at: string | null }>(`SELECT last_scanned_at FROM repos WHERE id = $1`, [s.repoA]))[0]!;

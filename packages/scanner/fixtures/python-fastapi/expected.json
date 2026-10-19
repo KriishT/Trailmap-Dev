@@ -1,0 +1,44 @@
+{
+  "description": "FastAPI service using SQLAlchemy on Postgres and SendGrid.",
+  "nodes": [
+    {
+      "id": "service:.",
+      "type": "service"
+    },
+    {
+      "id": "db:postgres",
+      "type": "database"
+    },
+    {
+      "id": "vendor:sendgrid",
+      "type": "saas"
+    }
+  ],
+  "edges": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "type": "database"
+    },
+    {
+      "from": "service:.",
+      "to": "vendor:sendgrid",
+      "type": "http"
+    }
+  ],
+  "vendors": [
+    "sendgrid"
+  ],
+  "dataClasses": [
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "class": "PII"
+    },
+    {
+      "from": "service:.",
+      "to": "db:postgres",
+      "class": "CREDENTIALS"
+    }
+  ]
+}

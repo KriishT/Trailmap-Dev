@@ -1,0 +1,1170 @@
+{
+  "version": 1,
+  "note": "Datastores, queues and object stores. 'nodeType' is the graph node type; 'edge' is the edge type from a service. 'uris' are connection-string schemes; 'images' are docker image name fragments; 'tf' / 'cfn' are IaC resource types.",
+  "engines": [
+    {
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "postgres://",
+        "postgresql://",
+        "jdbc:postgresql:",
+        "postgresql+psycopg2://",
+        "postgresql+asyncpg://"
+      ],
+      "images": [
+        "postgres",
+        "postgis",
+        "timescaledb"
+      ],
+      "envVars": [
+        "DATABASE_URL",
+        "POSTGRES_URL",
+        "POSTGRES_URI",
+        "POSTGRES_HOST",
+        "PGHOST",
+        "PGDATABASE",
+        "POSTGRES_PRISMA_URL",
+        "POSTGRES_DSN"
+      ],
+      "match": {
+        "npm": [
+          "pg",
+          "pg-promise",
+          "postgres",
+          "@neondatabase/serverless",
+          "@vercel/postgres",
+          "pg-pool"
+        ],
+        "python": [
+          "psycopg2",
+          "psycopg",
+          "asyncpg",
+          "pg8000"
+        ],
+        "go": [
+          "github.com/lib/pq",
+          "github.com/jackc/pgx"
+        ],
+        "java": [
+          "org.postgresql"
+        ],
+        "cs": [
+          "Npgsql"
+        ],
+        "ruby": [
+          "pg"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "pg",
+          "pg-promise",
+          "postgres",
+          "@neondatabase/serverless",
+          "@vercel/postgres"
+        ],
+        "pypi": [
+          "psycopg2",
+          "psycopg2-binary",
+          "psycopg",
+          "asyncpg"
+        ],
+        "go": [
+          "github.com/lib/pq",
+          "github.com/jackc/pgx"
+        ],
+        "maven": [
+          "org.postgresql:postgresql"
+        ],
+        "nuget": [
+          "Npgsql",
+          "Npgsql.EntityFrameworkCore.PostgreSQL"
+        ],
+        "gems": [
+          "pg"
+        ]
+      },
+      "tf": [
+        "aws_db_instance:postgres",
+        "aws_rds_cluster:aurora-postgresql",
+        "google_sql_database_instance:POSTGRES",
+        "azurerm_postgresql_server",
+        "azurerm_postgresql_flexible_server"
+      ],
+      "cfn": [
+        "AWS::RDS::DBInstance:postgres",
+        "AWS::RDS::DBCluster:aurora-postgresql"
+      ]
+    },
+    {
+      "id": "mysql",
+      "name": "MySQL",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "mysql://",
+        "jdbc:mysql:",
+        "mysql2://",
+        "mariadb://",
+        "jdbc:mariadb:"
+      ],
+      "images": [
+        "mysql",
+        "mariadb"
+      ],
+      "envVars": [
+        "MYSQL_URL",
+        "MYSQL_HOST",
+        "MYSQL_DATABASE",
+        "MYSQL_DSN",
+        "PLANETSCALE_URL"
+      ],
+      "match": {
+        "npm": [
+          "mysql",
+          "mysql2",
+          "@planetscale/database"
+        ],
+        "python": [
+          "MySQLdb",
+          "pymysql",
+          "mysql.connector",
+          "aiomysql"
+        ],
+        "go": [
+          "github.com/go-sql-driver/mysql"
+        ],
+        "java": [
+          "com.mysql",
+          "org.mariadb"
+        ],
+        "cs": [
+          "MySql.Data",
+          "MySqlConnector",
+          "Pomelo.EntityFrameworkCore.MySql"
+        ],
+        "ruby": [
+          "mysql2"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "mysql",
+          "mysql2",
+          "@planetscale/database"
+        ],
+        "pypi": [
+          "PyMySQL",
+          "mysqlclient",
+          "mysql-connector-python"
+        ],
+        "go": [
+          "github.com/go-sql-driver/mysql"
+        ],
+        "maven": [
+          "mysql:mysql-connector-java",
+          "com.mysql:mysql-connector-j"
+        ],
+        "nuget": [
+          "MySql.Data",
+          "MySqlConnector"
+        ],
+        "gems": [
+          "mysql2"
+        ]
+      },
+      "tf": [
+        "aws_db_instance:mysql",
+        "aws_db_instance:mariadb",
+        "aws_rds_cluster:aurora-mysql",
+        "google_sql_database_instance:MYSQL",
+        "azurerm_mysql_server"
+      ],
+      "cfn": [
+        "AWS::RDS::DBInstance:mysql",
+        "AWS::RDS::DBCluster:aurora-mysql"
+      ]
+    },
+    {
+      "id": "mssql",
+      "name": "SQL Server",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "sqlserver://",
+        "jdbc:sqlserver:",
+        "mssql://",
+        "mssql+pyodbc://"
+      ],
+      "images": [
+        "mssql/server",
+        "sql-server"
+      ],
+      "envVars": [
+        "MSSQL_URL",
+        "SQLSERVER_URL"
+      ],
+      "match": {
+        "npm": [
+          "mssql",
+          "tedious"
+        ],
+        "python": [
+          "pyodbc",
+          "pymssql"
+        ],
+        "go": [
+          "github.com/denisenkom/go-mssqldb",
+          "github.com/microsoft/go-mssqldb"
+        ],
+        "java": [
+          "com.microsoft.sqlserver"
+        ],
+        "cs": [
+          "Microsoft.Data.SqlClient",
+          "System.Data.SqlClient"
+        ],
+        "ruby": [
+          "tiny_tds"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "mssql",
+          "tedious"
+        ],
+        "pypi": [
+          "pyodbc",
+          "pymssql"
+        ],
+        "maven": [
+          "com.microsoft.sqlserver:mssql-jdbc"
+        ],
+        "nuget": [
+          "Microsoft.Data.SqlClient",
+          "System.Data.SqlClient",
+          "Microsoft.EntityFrameworkCore.SqlServer"
+        ],
+        "gems": [
+          "tiny_tds"
+        ]
+      },
+      "tf": [
+        "aws_db_instance:sqlserver-ex",
+        "azurerm_mssql_server"
+      ],
+      "cfn": []
+    },
+    {
+      "id": "mongodb",
+      "name": "MongoDB",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "mongodb://",
+        "mongodb+srv://"
+      ],
+      "images": [
+        "mongo"
+      ],
+      "envVars": [
+        "MONGODB_URI",
+        "MONGODB_URL",
+        "MONGO_URL",
+        "MONGO_URI"
+      ],
+      "match": {
+        "npm": [
+          "mongodb",
+          "mongoose"
+        ],
+        "python": [
+          "pymongo",
+          "motor",
+          "mongoengine"
+        ],
+        "go": [
+          "go.mongodb.org/mongo-driver"
+        ],
+        "java": [
+          "com.mongodb",
+          "org.springframework.data.mongodb"
+        ],
+        "cs": [
+          "MongoDB"
+        ],
+        "ruby": [
+          "mongo",
+          "mongoid"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "mongodb",
+          "mongoose"
+        ],
+        "pypi": [
+          "pymongo",
+          "motor",
+          "mongoengine"
+        ],
+        "go": [
+          "go.mongodb.org/mongo-driver"
+        ],
+        "maven": [
+          "org.mongodb:mongodb-driver-sync"
+        ],
+        "nuget": [
+          "MongoDB.Driver"
+        ],
+        "gems": [
+          "mongo",
+          "mongoid"
+        ]
+      },
+      "tf": [
+        "aws_docdb_cluster",
+        "mongodbatlas_cluster"
+      ],
+      "cfn": [
+        "AWS::DocDB::DBCluster"
+      ]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "redis://",
+        "rediss://"
+      ],
+      "images": [
+        "redis",
+        "valkey"
+      ],
+      "envVars": [
+        "REDIS_URL",
+        "REDIS_URI",
+        "REDIS_HOST",
+        "REDIS_TLS_URL",
+        "UPSTASH_REDIS_REST_URL"
+      ],
+      "match": {
+        "npm": [
+          "redis",
+          "ioredis",
+          "@upstash/redis",
+          "bullmq",
+          "bull"
+        ],
+        "python": [
+          "redis",
+          "aioredis"
+        ],
+        "go": [
+          "github.com/redis/go-redis",
+          "github.com/go-redis/redis",
+          "github.com/gomodule/redigo"
+        ],
+        "java": [
+          "redis.clients.jedis",
+          "io.lettuce",
+          "org.springframework.data.redis"
+        ],
+        "cs": [
+          "StackExchange.Redis"
+        ],
+        "ruby": [
+          "redis"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "redis",
+          "ioredis",
+          "@upstash/redis",
+          "bullmq",
+          "bull"
+        ],
+        "pypi": [
+          "redis",
+          "aioredis"
+        ],
+        "go": [
+          "github.com/redis/go-redis",
+          "github.com/go-redis/redis",
+          "github.com/gomodule/redigo"
+        ],
+        "maven": [
+          "redis.clients:jedis",
+          "io.lettuce:lettuce-core"
+        ],
+        "nuget": [
+          "StackExchange.Redis"
+        ],
+        "gems": [
+          "redis"
+        ]
+      },
+      "tf": [
+        "aws_elasticache_cluster:redis",
+        "aws_elasticache_replication_group",
+        "google_redis_instance",
+        "azurerm_redis_cache"
+      ],
+      "cfn": [
+        "AWS::ElastiCache::ReplicationGroup",
+        "AWS::ElastiCache::CacheCluster:redis"
+      ]
+    },
+    {
+      "id": "elasticsearch",
+      "name": "Elasticsearch",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "elasticsearch://"
+      ],
+      "images": [
+        "elasticsearch",
+        "opensearch"
+      ],
+      "envVars": [
+        "ELASTICSEARCH_URL",
+        "ELASTICSEARCH_NODE",
+        "OPENSEARCH_URL"
+      ],
+      "match": {
+        "npm": [
+          "@elastic/elasticsearch",
+          "@opensearch-project/opensearch"
+        ],
+        "python": [
+          "elasticsearch",
+          "opensearchpy"
+        ],
+        "go": [
+          "github.com/elastic/go-elasticsearch",
+          "github.com/olivere/elastic"
+        ],
+        "java": [
+          "org.elasticsearch",
+          "co.elastic.clients"
+        ],
+        "cs": [
+          "Elasticsearch.Net",
+          "Nest"
+        ],
+        "ruby": [
+          "elasticsearch"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@elastic/elasticsearch",
+          "@opensearch-project/opensearch"
+        ],
+        "pypi": [
+          "elasticsearch",
+          "opensearch-py"
+        ],
+        "go": [
+          "github.com/elastic/go-elasticsearch"
+        ],
+        "nuget": [
+          "NEST",
+          "Elastic.Clients.Elasticsearch"
+        ],
+        "gems": [
+          "elasticsearch"
+        ]
+      },
+      "tf": [
+        "aws_elasticsearch_domain",
+        "aws_opensearch_domain"
+      ],
+      "cfn": [
+        "AWS::OpenSearchService::Domain",
+        "AWS::Elasticsearch::Domain"
+      ]
+    },
+    {
+      "id": "dynamodb",
+      "name": "Amazon DynamoDB",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [],
+      "images": [
+        "dynamodb-local"
+      ],
+      "envVars": [
+        "DYNAMODB_TABLE",
+        "DYNAMODB_ENDPOINT"
+      ],
+      "match": {
+        "npm": [
+          "@aws-sdk/client-dynamodb",
+          "@aws-sdk/lib-dynamodb",
+          "dynamoose"
+        ],
+        "python": [
+          "boto3.dynamodb",
+          "pynamodb"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/dynamodb",
+          "github.com/aws/aws-sdk-go/service/dynamodb"
+        ],
+        "java": [
+          "software.amazon.awssdk.services.dynamodb",
+          "com.amazonaws.services.dynamodbv2"
+        ],
+        "cs": [
+          "Amazon.DynamoDBv2"
+        ],
+        "ruby": [
+          "aws-sdk-dynamodb"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@aws-sdk/client-dynamodb",
+          "@aws-sdk/lib-dynamodb",
+          "dynamoose"
+        ],
+        "pypi": [
+          "pynamodb"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+        ],
+        "nuget": [
+          "AWSSDK.DynamoDBv2"
+        ],
+        "gems": [
+          "aws-sdk-dynamodb"
+        ]
+      },
+      "tf": [
+        "aws_dynamodb_table"
+      ],
+      "cfn": [
+        "AWS::DynamoDB::Table"
+      ],
+      "vendor": "aws"
+    },
+    {
+      "id": "cassandra",
+      "name": "Apache Cassandra",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "cassandra://"
+      ],
+      "images": [
+        "cassandra",
+        "scylla"
+      ],
+      "envVars": [
+        "CASSANDRA_HOSTS",
+        "CASSANDRA_CONTACT_POINTS"
+      ],
+      "match": {
+        "npm": [
+          "cassandra-driver"
+        ],
+        "python": [
+          "cassandra"
+        ],
+        "go": [
+          "github.com/gocql/gocql"
+        ],
+        "java": [
+          "com.datastax"
+        ],
+        "cs": [
+          "Cassandra"
+        ],
+        "ruby": [
+          "cassandra-driver"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "cassandra-driver"
+        ],
+        "pypi": [
+          "cassandra-driver"
+        ],
+        "go": [
+          "github.com/gocql/gocql"
+        ],
+        "maven": [
+          "com.datastax.oss:java-driver-core"
+        ],
+        "nuget": [
+          "CassandraCSharpDriver"
+        ],
+        "gems": [
+          "cassandra-driver"
+        ]
+      },
+      "tf": [],
+      "cfn": []
+    },
+    {
+      "id": "sqlite",
+      "name": "SQLite",
+      "nodeType": "database",
+      "edge": "database",
+      "uris": [
+        "sqlite://",
+        "sqlite:///",
+        "jdbc:sqlite:"
+      ],
+      "images": [],
+      "envVars": [],
+      "match": {
+        "npm": [
+          "sqlite3",
+          "better-sqlite3",
+          "sqlite"
+        ],
+        "python": [
+          "sqlite3"
+        ],
+        "go": [
+          "github.com/mattn/go-sqlite3",
+          "modernc.org/sqlite"
+        ],
+        "java": [
+          "org.sqlite"
+        ],
+        "cs": [
+          "Microsoft.Data.Sqlite",
+          "System.Data.SQLite"
+        ],
+        "ruby": [
+          "sqlite3"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "sqlite3",
+          "better-sqlite3"
+        ],
+        "go": [
+          "github.com/mattn/go-sqlite3"
+        ],
+        "maven": [
+          "org.xerial:sqlite-jdbc"
+        ],
+        "nuget": [
+          "Microsoft.Data.Sqlite"
+        ],
+        "gems": [
+          "sqlite3"
+        ]
+      },
+      "tf": [],
+      "cfn": []
+    },
+    {
+      "id": "kafka",
+      "name": "Apache Kafka",
+      "nodeType": "queue",
+      "edge": "queue",
+      "uris": [
+        "kafka://"
+      ],
+      "images": [
+        "kafka",
+        "redpanda",
+        "cp-kafka"
+      ],
+      "envVars": [
+        "KAFKA_BROKERS",
+        "KAFKA_BROKER",
+        "KAFKA_URL",
+        "KAFKA_BOOTSTRAP_SERVERS",
+        "KAFKA_BOOTSTRAP_SERVER"
+      ],
+      "match": {
+        "npm": [
+          "kafkajs",
+          "node-rdkafka",
+          "@confluentinc/kafka-javascript"
+        ],
+        "python": [
+          "kafka",
+          "confluent_kafka",
+          "aiokafka"
+        ],
+        "go": [
+          "github.com/segmentio/kafka-go",
+          "github.com/Shopify/sarama",
+          "github.com/IBM/sarama",
+          "github.com/confluentinc/confluent-kafka-go"
+        ],
+        "java": [
+          "org.apache.kafka",
+          "org.springframework.kafka"
+        ],
+        "cs": [
+          "Confluent.Kafka"
+        ],
+        "ruby": [
+          "ruby-kafka",
+          "rdkafka"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "kafkajs",
+          "node-rdkafka"
+        ],
+        "pypi": [
+          "kafka-python",
+          "confluent-kafka",
+          "aiokafka"
+        ],
+        "go": [
+          "github.com/segmentio/kafka-go",
+          "github.com/Shopify/sarama",
+          "github.com/IBM/sarama"
+        ],
+        "maven": [
+          "org.apache.kafka:kafka-clients",
+          "org.springframework.kafka:spring-kafka"
+        ],
+        "nuget": [
+          "Confluent.Kafka"
+        ],
+        "gems": [
+          "ruby-kafka",
+          "rdkafka"
+        ]
+      },
+      "tf": [
+        "aws_msk_cluster",
+        "confluent_kafka_cluster"
+      ],
+      "cfn": [
+        "AWS::MSK::Cluster"
+      ]
+    },
+    {
+      "id": "rabbitmq",
+      "name": "RabbitMQ",
+      "nodeType": "queue",
+      "edge": "queue",
+      "uris": [
+        "amqp://",
+        "amqps://"
+      ],
+      "images": [
+        "rabbitmq"
+      ],
+      "envVars": [
+        "RABBITMQ_URL",
+        "AMQP_URL",
+        "RABBITMQ_HOST",
+        "CLOUDAMQP_URL"
+      ],
+      "match": {
+        "npm": [
+          "amqplib",
+          "amqp-connection-manager"
+        ],
+        "python": [
+          "pika",
+          "aio_pika",
+          "kombu"
+        ],
+        "go": [
+          "github.com/streadway/amqp",
+          "github.com/rabbitmq/amqp091-go"
+        ],
+        "java": [
+          "com.rabbitmq",
+          "org.springframework.amqp"
+        ],
+        "cs": [
+          "RabbitMQ.Client"
+        ],
+        "ruby": [
+          "bunny"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "amqplib",
+          "amqp-connection-manager"
+        ],
+        "pypi": [
+          "pika",
+          "aio-pika",
+          "kombu"
+        ],
+        "go": [
+          "github.com/rabbitmq/amqp091-go",
+          "github.com/streadway/amqp"
+        ],
+        "maven": [
+          "com.rabbitmq:amqp-client",
+          "org.springframework.boot:spring-boot-starter-amqp"
+        ],
+        "nuget": [
+          "RabbitMQ.Client"
+        ],
+        "gems": [
+          "bunny"
+        ]
+      },
+      "tf": [
+        "aws_mq_broker"
+      ],
+      "cfn": [
+        "AWS::AmazonMQ::Broker"
+      ]
+    },
+    {
+      "id": "sqs",
+      "name": "Amazon SQS",
+      "nodeType": "queue",
+      "edge": "queue",
+      "uris": [],
+      "images": [
+        "localstack"
+      ],
+      "envVars": [
+        "SQS_QUEUE_URL",
+        "SQS_URL",
+        "QUEUE_URL"
+      ],
+      "match": {
+        "npm": [
+          "@aws-sdk/client-sqs",
+          "sqs-consumer"
+        ],
+        "python": [
+          "boto3.sqs"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/sqs",
+          "github.com/aws/aws-sdk-go/service/sqs"
+        ],
+        "java": [
+          "software.amazon.awssdk.services.sqs",
+          "com.amazonaws.services.sqs"
+        ],
+        "cs": [
+          "Amazon.SQS"
+        ],
+        "ruby": [
+          "aws-sdk-sqs"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@aws-sdk/client-sqs",
+          "sqs-consumer"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/sqs"
+        ],
+        "nuget": [
+          "AWSSDK.SQS"
+        ],
+        "gems": [
+          "aws-sdk-sqs"
+        ]
+      },
+      "tf": [
+        "aws_sqs_queue"
+      ],
+      "cfn": [
+        "AWS::SQS::Queue"
+      ],
+      "vendor": "aws"
+    },
+    {
+      "id": "sns",
+      "name": "Amazon SNS",
+      "nodeType": "queue",
+      "edge": "queue",
+      "uris": [],
+      "images": [],
+      "envVars": [
+        "SNS_TOPIC_ARN"
+      ],
+      "match": {
+        "npm": [
+          "@aws-sdk/client-sns"
+        ],
+        "python": [
+          "boto3.sns"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/sns"
+        ],
+        "java": [
+          "software.amazon.awssdk.services.sns",
+          "com.amazonaws.services.sns"
+        ],
+        "cs": [
+          "Amazon.SimpleNotificationService"
+        ],
+        "ruby": [
+          "aws-sdk-sns"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@aws-sdk/client-sns"
+        ],
+        "nuget": [
+          "AWSSDK.SimpleNotificationService"
+        ],
+        "gems": [
+          "aws-sdk-sns"
+        ]
+      },
+      "tf": [
+        "aws_sns_topic"
+      ],
+      "cfn": [
+        "AWS::SNS::Topic"
+      ],
+      "vendor": "aws"
+    },
+    {
+      "id": "nats",
+      "name": "NATS",
+      "nodeType": "queue",
+      "edge": "queue",
+      "uris": [
+        "nats://"
+      ],
+      "images": [
+        "nats"
+      ],
+      "envVars": [
+        "NATS_URL"
+      ],
+      "match": {
+        "npm": [
+          "nats"
+        ],
+        "python": [
+          "nats"
+        ],
+        "go": [
+          "github.com/nats-io/nats.go"
+        ],
+        "java": [
+          "io.nats"
+        ],
+        "cs": [
+          "NATS.Client",
+          "NATS.Net"
+        ],
+        "ruby": [
+          "nats-pure"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "nats"
+        ],
+        "pypi": [
+          "nats-py"
+        ],
+        "go": [
+          "github.com/nats-io/nats.go"
+        ],
+        "maven": [
+          "io.nats:jnats"
+        ],
+        "nuget": [
+          "NATS.Client",
+          "NATS.Net"
+        ]
+      },
+      "tf": [],
+      "cfn": []
+    },
+    {
+      "id": "s3",
+      "name": "Amazon S3",
+      "nodeType": "storage",
+      "edge": "storage",
+      "uris": [
+        "s3://"
+      ],
+      "images": [
+        "minio"
+      ],
+      "envVars": [
+        "S3_BUCKET",
+        "S3_ENDPOINT",
+        "AWS_S3_BUCKET",
+        "S3_BUCKET_NAME"
+      ],
+      "match": {
+        "npm": [
+          "@aws-sdk/client-s3",
+          "@aws-sdk/s3-request-presigner",
+          "multer-s3"
+        ],
+        "python": [
+          "boto3.s3"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/s3",
+          "github.com/aws/aws-sdk-go/service/s3"
+        ],
+        "java": [
+          "software.amazon.awssdk.services.s3",
+          "com.amazonaws.services.s3"
+        ],
+        "cs": [
+          "Amazon.S3"
+        ],
+        "ruby": [
+          "aws-sdk-s3"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@aws-sdk/client-s3",
+          "multer-s3"
+        ],
+        "go": [
+          "github.com/aws/aws-sdk-go-v2/service/s3"
+        ],
+        "nuget": [
+          "AWSSDK.S3"
+        ],
+        "gems": [
+          "aws-sdk-s3"
+        ]
+      },
+      "tf": [
+        "aws_s3_bucket"
+      ],
+      "cfn": [
+        "AWS::S3::Bucket"
+      ],
+      "vendor": "aws"
+    },
+    {
+      "id": "gcs",
+      "name": "Google Cloud Storage",
+      "nodeType": "storage",
+      "edge": "storage",
+      "uris": [
+        "gs://"
+      ],
+      "images": [],
+      "envVars": [
+        "GCS_BUCKET",
+        "GOOGLE_CLOUD_STORAGE_BUCKET"
+      ],
+      "match": {
+        "npm": [
+          "@google-cloud/storage"
+        ],
+        "python": [
+          "google.cloud.storage"
+        ],
+        "go": [
+          "cloud.google.com/go/storage"
+        ],
+        "java": [
+          "com.google.cloud.storage"
+        ],
+        "cs": [
+          "Google.Cloud.Storage"
+        ],
+        "ruby": [
+          "google-cloud-storage"
+        ]
+      },
+      "manifest": {
+        "npm": [
+          "@google-cloud/storage"
+        ],
+        "pypi": [
+          "google-cloud-storage"
+        ],
+        "go": [
+          "cloud.google.com/go/storage"
+        ],
+        "nuget": [
+          "Google.Cloud.Storage.V1"
+        ],
+        "gems": [
+          "google-cloud-storage"
+        ]
+      },
+      "tf": [
+        "google_storage_bucket"
+      ],
+      "cfn": [],
+      "vendor": "gcp"
+    },
+    {
+      "id": "azure-blob",
+      "name": "Azure Blob Storage",
+      "nodeType": "storage",
+      "edge": "storage",
+      "uris": [],
+      "images": [
+        "azurite"
+      ],
+      "envVars": [
+        "AZURE_STORAGE_CONNECTION_STRING",
+        "AZURE_STORAGE_ACCOUNT"
+      ],
+      "match": {
+        "npm": [
+          "@azure/storage-blob"
+        ],
+        "python": [
+          "azure.storage.blob"
+        ],
+        "go": [
+          "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+        ],
+        "java": [
+          "com.azure.storage.blob"
+        ],
+        "cs": [
+          "Azure.Storage.Blobs"
+        ],
+        "ruby": []
+      },
+      "manifest": {
+        "npm": [
+          "@azure/storage-blob"
+        ],
+        "pypi": [
+          "azure-storage-blob"
+        ],
+        "nuget": [
+          "Azure.Storage.Blobs"
+        ]
+      },
+      "tf": [
+        "azurerm_storage_account"
+      ],
+      "cfn": [],
+      "vendor": "azure"
+    }
+  ]
+}
