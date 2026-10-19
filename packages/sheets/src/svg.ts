@@ -115,18 +115,6 @@ function renderNode(node: SceneNode, t: Theme, interactive: boolean): string {
   return `<g class="node-wrap"><g class="node"${attrs}>${nodeShape(node, t)}</g><g class="node-text" aria-hidden="true" pointer-events="none">${texts}</g></g>`;
 }
 
-function midpoint(points: Point[]): Point {
-  // Midpoint of the longest segment, so labels sit on a straight run.
-  let best = { len: -1, a: points[0]!, b: points[points.length - 1]! };
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i]!;
-    const b = points[i + 1]!;
-    const len = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-    if (len > best.len) best = { len, a, b };
-  }
-  return { x: (best.a.x + best.b.x) / 2, y: (best.a.y + best.b.y) / 2 };
-}
-
 const TYPE_TAG: Partial<Record<SceneEdge["type"], string>> = { database: "DB", queue: "QUEUE", storage: "STORE", network: "NET", import: "IMPORT" };
 
 interface Rect { x: number; y: number; w: number; h: number }

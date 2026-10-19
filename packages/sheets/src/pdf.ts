@@ -39,7 +39,7 @@ const hex = (c: string): RGB => {
 };
 
 /** Standard fonts only encode Latin-1. */
-export const latin1 = (s: string) => s.replace(/[^\x20-\x7e -ÿ]/g, (ch) => (ch === "·" ? "·" : ch === "…" ? "..." : "?"));
+export const latin1 = (s: string) => s.replace(/[^\u0020-\u007e\u00a0-\u00ff]/g, (ch) => (ch === "\u2026" ? "..." : "?"));
 
 interface Ctx {
   doc: PDFDocument;

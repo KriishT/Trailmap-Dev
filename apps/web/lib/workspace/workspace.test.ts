@@ -140,9 +140,15 @@ describe("revision labels and change summaries", () => {
 describe("local mode guard", () => {
   const set = (env: Record<string, string | undefined>) => {
     const saved = { ...process.env };
-    for (const [k, v] of Object.entries(env)) (v === undefined ? delete process.env[k] : (process.env[k] = v));
+    for (const [k, v] of Object.entries(env)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
     return () => {
-      for (const k of Object.keys(env)) (saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k]));
+      for (const k of Object.keys(env)) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
     };
   };
 
