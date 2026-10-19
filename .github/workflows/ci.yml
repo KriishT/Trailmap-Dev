@@ -37,6 +37,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # Accuracy gate: precision/recall on the fixture corpus, determinism, the trap repo and
+      # this repository's own scan. Writes docs/accuracy.md.
+      - name: Scanner eval
+        run: npm run eval
+
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10

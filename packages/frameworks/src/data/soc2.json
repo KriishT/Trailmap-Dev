@@ -1,0 +1,33 @@
+{
+  "id": "soc2",
+  "name": "SOC 2",
+  "version": "2017 Trust Services Criteria (2022 revised points of focus)",
+  "aliases": ["soc-2", "soc2-type2"],
+  "disclaimer": "Trailmap produces evidence to support the system description and the auditor's understanding of your architecture. It does not make a service organization SOC 2 compliant and is not a substitute for the auditor's testing.",
+  "requirements": [
+    {
+      "id": "DC200-system-description",
+      "title": "System description: infrastructure and software",
+      "summary": "The description of the system covers the infrastructure and software that support the services, and how data flows between them (AICPA description criteria, DC section 200).",
+      "produces": ["system-diagram", "data-flow-diagram", "evidence-appendix"],
+      "sheets": ["system", "data-flow"],
+      "verify": "Compare the generated system sheet with your written description. Components that exist only outside source control and infrastructure-as-code will be missing."
+    },
+    {
+      "id": "CC9.2-vendor-management",
+      "title": "Vendor and business partner risk",
+      "summary": "The entity assesses and manages risks associated with vendors and business partners (CC9.2).",
+      "produces": ["vendor-inventory"],
+      "sheets": ["vendors"],
+      "verify": "The inventory lists vendors detected in code and configuration. It does not include vendors used only by people (for example a CRM used by sales) and the purpose, region and DPA fields must be completed by you."
+    },
+    {
+      "id": "CC8.1-change-management",
+      "title": "Change management",
+      "summary": "Changes to infrastructure, data and software are authorized, designed, tested, approved and implemented (CC8.1).",
+      "produces": ["revision-log", "attestation-trail"],
+      "sheets": ["revisions"],
+      "verify": "The revision log shows how the architecture changed between snapshots, and pull request checks record who acknowledged architectural drift. It does not evidence testing or approval of the code change itself."
+    }
+  ]
+}

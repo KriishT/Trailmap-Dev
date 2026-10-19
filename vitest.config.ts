@@ -8,6 +8,7 @@ export default defineConfig({
       "@trailmap/graph": path.resolve(__dirname, "packages/graph/src/index.ts"),
       "@trailmap/scanner": path.resolve(__dirname, "packages/scanner/src/index.ts"),
       "@trailmap/pipeline": path.resolve(__dirname, "packages/pipeline/src/index.ts"),
+      "@trailmap/frameworks": path.resolve(__dirname, "packages/frameworks/src/index.ts"),
     },
   },
   test: {

@@ -47,6 +47,7 @@ export const evidenceKindSchema = z.enum([
   "schema",
   "dependency",
   "iac",
+  "manual",
 ]);
 
 export const dataClassSchema = z.enum(["PII", "PAN", "PHI", "CREDENTIALS"]);

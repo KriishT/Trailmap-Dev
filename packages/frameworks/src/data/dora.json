@@ -1,0 +1,17 @@
+{
+  "id": "dora",
+  "name": "EU DORA",
+  "version": "Regulation (EU) 2022/2554",
+  "aliases": ["eu-dora"],
+  "disclaimer": "Trailmap helps you assemble a starting point for the register of information. It does not determine which providers are ICT third-party service providers under DORA, and the register must be completed and verified by the financial entity before it is submitted.",
+  "requirements": [
+    {
+      "id": "Art28(3)",
+      "title": "Register of information on ICT third-party arrangements",
+      "summary": "Financial entities maintain a register of information in relation to all contractual arrangements on the use of ICT services provided by ICT third-party service providers (Article 28(3)).",
+      "produces": ["vendor-inventory", "dora-register-assist"],
+      "sheets": ["vendors"],
+      "verify": "The register-assist export is derived from code and configuration only. It has no contract identifiers, criticality assessment, subcontracting chain or legal entity identifiers; those fields are required by the register templates and must be added by you."
+    }
+  ]
+}

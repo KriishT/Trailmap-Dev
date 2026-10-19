@@ -1,0 +1,33 @@
+{
+  "id": "pci-dss",
+  "name": "PCI DSS",
+  "version": "4.0.1",
+  "aliases": ["pci", "pci-dss-4"],
+  "disclaimer": "Trailmap produces evidence to support preparation for a PCI DSS assessment. It does not certify compliance and is not a substitute for a Qualified Security Assessor. Confirm scope and the wording of each requirement with your assessor.",
+  "requirements": [
+    {
+      "id": "1.2.3",
+      "title": "Network diagram",
+      "summary": "An accurate network diagram or equivalent shows all connections between the cardholder data environment and other networks, including any wireless networks.",
+      "produces": ["network-diagram", "evidence-appendix"],
+      "sheets": ["network", "system"],
+      "verify": "Trailmap derives the network sheet from infrastructure-as-code and deploy manifests. Anything not defined as code (manually created cloud resources, on-premises networks, wireless networks) will not appear and must be added by a person."
+    },
+    {
+      "id": "1.2.4",
+      "title": "Data-flow diagram",
+      "summary": "An accurate data-flow diagram shows all account data flows across systems and networks, and is updated as needed on changes to the environment.",
+      "produces": ["data-flow-diagram", "data-class-table", "evidence-appendix", "revision-log"],
+      "sheets": ["data-flow", "system"],
+      "verify": "Data classes are inferred from schemas and SDK calls. Flows marked 'possible' are not confirmed; review them and set data classes explicitly where the inference is wrong."
+    },
+    {
+      "id": "12.5.2",
+      "title": "Scope confirmation",
+      "summary": "PCI DSS scope is documented and confirmed at least once every 12 months and on significant change, including identification of all data flows and system components in scope.",
+      "produces": ["scope-confirmation", "vendor-inventory", "attestation-trail", "revision-log"],
+      "sheets": ["system", "data-flow", "vendors"],
+      "verify": "The scope you define in Trailmap and the attestations recorded against a snapshot document that a named person reviewed the architecture at a point in time. Your assessor decides whether that satisfies the requirement."
+    }
+  ]
+}
