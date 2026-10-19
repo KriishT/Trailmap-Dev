@@ -29,7 +29,8 @@ describe("large systems", () => {
     const t2 = performance.now();
     console.log(`300 nodes, ${g.edges.length} edges: layout ${Math.round(t1 - t0)} ms, draw ${Math.round(t2 - t1)} ms, svg ${Math.round(svg.length / 1024)} KiB`);
     expect(scene.nodes).toHaveLength(300);
-    expect(t1 - t0).toBeLessThan(15_000);
+    // about 1.2 s normally; V8 coverage instrumentation of the layout engine makes it ~15 s, so the bound is generous
+    expect(t1 - t0).toBeLessThan(60_000);
     expect(t2 - t1).toBeLessThan(2_000);
     expect(svg.length).toBeLessThan(5 * 1024 * 1024);
   });
