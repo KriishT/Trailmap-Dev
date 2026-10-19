@@ -10,6 +10,7 @@ export default defineConfig({
       "@trailmap/pipeline/context": path.resolve(__dirname, "packages/pipeline/src/context-entry.ts"),
       "@trailmap/pipeline": path.resolve(__dirname, "packages/pipeline/src/index.ts"),
       "@trailmap/frameworks": path.resolve(__dirname, "packages/frameworks/src/index.ts"),
+      "@trailmap/cli": path.resolve(__dirname, "packages/cli/src/index.ts"),
     },
   },
   test: {

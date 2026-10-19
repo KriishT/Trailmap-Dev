@@ -2,10 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { GraphClient } from "./graph-client.js";
 
+const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }] });
+
 export function createTrailmapMcpServer(client: GraphClient): McpServer {
   const server = new McpServer({
     name: "trailmap",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
   server.tool(
@@ -124,6 +126,46 @@ export function createTrailmapMcpServer(client: GraphClient): McpServer {
         content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
       };
     }
+  );
+
+  server.tool(
+    "get_compliance_scope",
+    "Returns the compliance scopes defined for this repository (for example a PCI cardholder data environment): their members, the nodes directly connected to them, and every connection that crosses the scope boundary",
+    {},
+    async () => {
+      const scopes = client.getComplianceScopes();
+      if (scopes.length === 0) {
+        return text("No compliance scopes are defined for this repository. Scopes are created in Trailmap or in .trailmap.yml.");
+      }
+      return text(
+        scopes.map((a) => ({
+          name: a.scope.name,
+          members: a.members.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+          missing_members: a.missing,
+          connected_to: a.connectedTo.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+          boundary_crossings: a.crossings.map((c) => ({
+            direction: c.direction, inside: c.inside.name, outside: c.outside.name, type: c.edge.type, confidence: c.edge.confidence,
+          })),
+        }))
+      );
+    }
+  );
+
+  server.tool(
+    "get_data_flows",
+    "Returns every connection that carries the given data class (PII, PAN, PHI or CREDENTIALS), whether it is evidenced by a code location or only possible, and where",
+    { data_class: z.enum(["PII", "PAN", "PHI", "CREDENTIALS"]).describe("The data class to trace") },
+    async ({ data_class }) => {
+      const flows = client.getDataFlows(data_class);
+      return text(flows.length ? flows : `No connection carries ${data_class}.`);
+    }
+  );
+
+  server.tool(
+    "check_change",
+    "Given the files you are about to change, returns which services they belong to, the downstream vendors and datastores, the services that depend on them, and which compliance scopes the change reaches. Use it before editing code that may affect a regulated boundary",
+    { files: z.array(z.string()).min(1).max(500).describe("Repo-relative paths of the files you plan to change") },
+    async ({ files }) => text(client.checkChange(files))
   );
 
   return server;

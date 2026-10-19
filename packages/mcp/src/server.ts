@@ -4,6 +4,8 @@ import { createTrailmapMcpServer } from "./index.js";
 import { GraphClient } from "./graph-client.js";
 import { scan } from "@trailmap/scanner";
 import * as path from "path";
+import * as fs from "fs";
+import { parsePolicy, type Scope } from "@trailmap/graph";
 
 const mode = process.env.TRAILMAP_MODE ?? "local";
 
@@ -34,7 +36,15 @@ async function main() {
       `[trailmap-mcp] Found ${graph.nodes.length} services, ${graph.edges.length} edges`
     );
 
-    client = GraphClient.fromGraph(graph);
+    // Scopes can be declared in the repository itself.
+    let scopes: Scope[] = [];
+    try {
+      const { policy } = parsePolicy(fs.readFileSync(path.join(absDir, ".trailmap.yml"), "utf8"));
+      scopes = policy.scopes.map((s) => ({ id: `policy:${s.name}`, name: s.name, nodeIds: s.nodes }));
+    } catch {
+      /* no policy file */
+    }
+    client = GraphClient.fromGraph(graph, scopes);
   }
 
   const server = createTrailmapMcpServer(client);

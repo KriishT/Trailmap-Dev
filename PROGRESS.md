@@ -54,5 +54,39 @@ Not done yet in Phase 1:
 - Authorization by RLS, not by hand-written membership code: routes query through the user's client; service-role client only for writes. Keeps one source of truth, covered by DB tests.
 - Evidence snippets (Phase 2) are short excerpts of source lines. "Source code is never stored" is therefore stated as "no repository contents are retained; graph evidence includes at most a 120-character excerpt per cited line", to be documented in SECURITY.md.
 
+## Phase 2: Scanner accuracy and new capabilities (DONE)
+
+- Replaced regex-over-raw-text detection with a tokenizer (JS/TS, Python, Go, Java, C#, Ruby). Comments and regex literals never become tokens; imports, env reads, URLs in client calls, connection strings, listen calls and vendor call sites are extracted from real code only. `.env.example` is "declared" evidence and never creates an edge. Test/spec/fixture/doc/vendored files, unused imports and `if (false)` blocks are ignored. Tooling configs (`eslint.config.js` etc.) are ignored.
+- Graph schema v2: file/line/snippet on every evidence entry, stable node and edge ids, `graphHash`, `scannerVersion`, data-class tags (`evidenced` / `possible`), node `exposure`/`public`, IaC provenance. Snippets mask URI credentials, secret-named values and well-known token formats.
+- IaC: Terraform (via `@cdktf/hcl2json`), CloudFormation (intrinsic tags), Helm (best-effort rendering), Kubernetes, docker-compose. Public ingress/egress flagged, ALB -> service -> datastore edges, internet node.
+- Vendor catalog (`vendors.json`, 39 vendors) and engine catalog (`engines.json`, 17 datastores/queues/stores) as data.
+- Data classification from Prisma, SQL, SQLAlchemy/Django, ActiveRecord schema.rb, TypeORM/JPA/EF entities, Go struct tags, OpenAPI, and vendor SDK call sites.
+- Eval harness (`npm run eval`): 9 fixtures + trap repo + this repo as a regression fixture; gates service->service and service->vendor precision >= 0.90 and recall >= 0.80, determinism, and zero phantom edges. Writes `docs/accuracy.md`. 2,000-file scan: ~3 s.
+- Honest caveat recorded in `docs/accuracy.md`: the fixtures were written together with the scanner, so 100% on them is not an estimate of accuracy on arbitrary codebases.
+- Self-scan went from 24 nodes / 25 edges (~17 false) to 13 nodes / 15 edges, all real.
+- Bugs the tests found along the way: a latent CloudFormation resource-type parsing bug, a secret leaking into evidence snippets, a missing `build.dockerfile` attribution.
+
+## Phase 3: Compliance layer (DONE, integrations not yet wired to a route)
+
+- `packages/graph`: diff, scope analysis, policy (`.trailmap.yml`), drift rules with stable finding keys, overrides, vendor inventory + CSV + DORA register assist, impact/blast radius, CODEOWNERS.
+- `packages/frameworks`: SOC 2, PCI DSS 4.0.1 (1.2.3, 1.2.4, 12.5.2), DORA Art. 28(3) as JSON config with `verify` notes; a test forbids certification claims.
+- Migration 004 with RLS on every table: scopes, scope_members, graph_overrides, drift_events, attestations (immutable except for FK actions), vendors, audit_events (append-only by trigger, automatic row auditing, secrets excluded), api_keys (hash only; column grants hide the hash), exports, repo_policies, share-link revocation + access log, job kinds.
+- PR check pipeline: clone PR head, scan, diff against the latest snapshot, evaluate drift, create a Check Run and one upserted comment (drift first, blast radius in `<details>`). `/trailmap ack` (GitHub write access required) or the in-app action records an attestation bound to the head graph hash and re-runs the check to success; a new push needs a new acknowledgement.
+- Webhook handler: push, pull_request, issue_comment, check_run (rerequested), installation, installation_repositories. Routes only enqueue.
+- API keys (create/list/revoke, shown once), `/api/mcp/{graph,scope,check}/[repoId]`, `/api/ingest/[repoId]` (CI-only mode: graph JSON in, drift verdict out).
+- Share links: bcrypt password, expiry, label watermark, revocation, access log (hashed IPs), rate-limited unlock with a signed cookie.
+- CLI: `scan --upload`, `vendors`, `evidence --framework`, `check --base` (local git worktree) and `check --remote`. `action.yml`.
+- MCP: original 6 tools + `get_compliance_scope`, `get_data_flows`, `check_change`; cloud client reads the real API shape.
+- `packages/integrations`: bearer-token (Drata-style), OAuth client-credentials (Vanta-style), signed webhook with replay protection, downloadable pack; feature-flagged, retried, tested against mocked servers. Endpoints are configuration; no official partnership is claimed.
+- Decisions: scope membership lives in `scope_members` (the "mark node in/out of scope" override); attestations are immutable by trigger but allow FK cascade (trigger depth > 1); API-key rate limiting is per instance (documented).
+
+Tests: 324 passing (DB isolation incl. every compliance table, route authorization, webhook fixtures, PR check flow, CLI end-to-end against the built binary and real git, MCP via the SDK's in-memory transport, integrations via msw).
+
+## Still open
+- `apps/web/lib` legacy files (graph-diff, graph-impact, graph-insights, github-pr-impact) have little test coverage; they feed the old UI and are replaced in Phase 4/5. Coverage gate for `apps/web/lib` will be met after that.
+- Gitleaks over full history not yet run locally (CI job exists).
+- True multi-connection claim test needs real Postgres (CI service).
+- `docker compose up` not verifiable on this machine (no Docker).
+
 ## Next
-Finish remaining Phase 1 items above, then Phase 2 (scanner accuracy: fixture corpus, eval harness, env-read-only connections, IaC, vendor inventory, data classification).
+Phase 4: evidence workspace (demo mode, onboarding, sheets, export, share UI). Phase 5: design system. Phase 6: docs.

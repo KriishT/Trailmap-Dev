@@ -3,6 +3,7 @@
   "ui": "tui",
   "globalEnv": [
     "NODE_ENV",
+    "SHARE_COOKIE_SECRET",
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",
     "GITHUB_WEBHOOK_SECRET",
@@ -16,7 +17,11 @@
     "TRAILMAP_API_URL",
     "TRAILMAP_MODE",
     "TRAILMAP_REPO_ID",
-    "TRAILMAP_SCAN_DIR"
+    "TRAILMAP_SCAN_DIR",
+    "TRAILMAP_INTEGRATIONS",
+    "TRAILMAP_PR_NUMBER",
+    "GITHUB_SHA",
+    "GITHUB_STEP_SUMMARY"
   ],
   "tasks": {
     "build": {

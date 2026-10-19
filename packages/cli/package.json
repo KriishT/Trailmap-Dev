@@ -1,6 +1,6 @@
 {
   "name": "@trailmap/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Auto-generate architecture maps from your codebase",
   "bin": {
     "trailmap": "./dist/bin.js"
@@ -15,6 +15,8 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@trailmap/frameworks": "*",
+    "@trailmap/graph": "*",
     "@trailmap/scanner": "*",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",

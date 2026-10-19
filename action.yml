@@ -1,0 +1,89 @@
+name: Trailmap scope check
+description: >
+  Check a pull request for architecture and compliance-scope drift, or upload the architecture graph
+  of your default branch. The job scans your code on the runner and, when it talks to Trailmap, sends
+  only the graph. Trailmap never needs read access to your repository in this mode.
+author: Trailmap
+branding:
+  icon: map
+  color: gray-dark
+
+inputs:
+  mode:
+    description: >
+      "check" compares this change with a git ref on the runner and needs no account.
+      "check-remote" compares it with the baseline stored in Trailmap (needs api-key and repo-id).
+      "upload" stores the graph of the checked-out commit as a snapshot (needs api-key and repo-id).
+    required: false
+    default: check
+  base-ref:
+    description: Git ref to compare against in "check" mode. Fetch it first (fetch-depth or a fetch step).
+    required: false
+    default: origin/main
+  working-directory:
+    description: Directory to scan, relative to the workspace.
+    required: false
+    default: "."
+  policy-file:
+    description: Path to the policy file. Defaults to .trailmap.yml in the working directory.
+    required: false
+    default: ""
+  api-url:
+    description: Trailmap API base URL.
+    required: false
+    default: https://app.trailmap.dev
+  api-key:
+    description: Trailmap API key. Store it as a repository secret.
+    required: false
+    default: ""
+  repo-id:
+    description: Repository id in Trailmap.
+    required: false
+    default: ""
+  cli-version:
+    description: Version of @trailmap/cli to run.
+    required: false
+    default: latest
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Run Trailmap
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TRAILMAP_API_URL: ${{ inputs.api-url }}
+        TRAILMAP_API_KEY: ${{ inputs.api-key }}
+        TRAILMAP_REPO_ID: ${{ inputs.repo-id }}
+        MODE: ${{ inputs.mode }}
+        BASE_REF: ${{ inputs.base-ref }}
+        POLICY_FILE: ${{ inputs.policy-file }}
+        CLI: "@trailmap/cli@${{ inputs.cli-version }}"
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        COMMIT_SHA: ${{ github.sha }}
+        BRANCH: ${{ github.ref_name }}
+      run: |
+        set -euo pipefail
+        policy_args=()
+        if [ -n "$POLICY_FILE" ]; then policy_args=(--policy "$POLICY_FILE"); fi
+
+        case "$MODE" in
+          check)
+            npx --yes "$CLI" check . --base "$BASE_REF" ${policy_args[@]+"${policy_args[@]}"}
+            ;;
+          check-remote)
+            npx --yes "$CLI" check . --remote --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" ${policy_args[@]+"${policy_args[@]}"}
+            ;;
+          upload)
+            npx --yes "$CLI" scan . --upload --commit "$COMMIT_SHA" --branch "$BRANCH"
+            ;;
+          *)
+            echo "Unknown mode: $MODE (use check, check-remote or upload)" >&2
+            exit 2
+            ;;
+        esac

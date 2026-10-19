@@ -42,6 +42,11 @@ export interface CatalogEntry {
 
 const confRank: Record<Confidence, number> = { low: 1, medium: 2, high: 3 };
 
+const EVIDENCE_RANK: Record<string, number> = {
+  "call-site": 0, "sdk-import": 1, "http-call": 2, env: 3, schema: 4, iac: 5, terraform: 5, cloudformation: 5,
+  compose: 6, kubernetes: 6, helm: 6, import: 7, manual: 8, dependency: 9, declared: 10,
+};
+
 /**
  * The subprocessor / third-party inventory for a graph. `catalog` supplies display names and
  * categories; unknown hosts are listed as external, uncategorised vendors.
@@ -71,10 +76,13 @@ export function buildVendorInventory(
       if (from && from.type !== "network") users.set(from.id, { id: from.id, name: from.name });
       if (confRank[e.confidence] > confRank[best]) best = e.confidence;
       for (const t of e.dataClasses ?? []) (t.certainty === "evidenced" ? evidenced : possible).add(t.class);
-      for (const ev of e.evidence ?? []) if (evidence.length < 6 && ev.kind !== "declared") evidence.push(ev);
+      for (const ev of e.evidence ?? []) if (ev.kind !== "declared") evidence.push(ev);
     }
     for (const c of evidenced) possible.delete(c);
+    // Show the most direct proof first: a call or import in code beats a manifest or deploy line.
+    evidence.sort((a, b) => (EVIDENCE_RANK[a.kind] ?? 9) - (EVIDENCE_RANK[b.kind] ?? 9) || a.source.localeCompare(b.source) || (a.line ?? 0) - (b.line ?? 0));
     const m = meta.get(vendorId);
+    evidence.length = Math.min(evidence.length, 6);
     rows.push({
       vendorId,
       name: entry?.name ?? node.name,

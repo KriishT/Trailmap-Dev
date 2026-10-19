@@ -138,7 +138,7 @@ describe("POST /api/maps/share", () => {
     asUser(ids.userA);
     const first = await (await post(s.snapA)).json();
     const second = await (await post(s.snapA)).json();
-    expect(first.slug).toMatch(/^[\w-]{10}$/);
+    expect(first.slug).toMatch(/^[\w-]{16}$/);
     expect(second.slug).toBe(first.slug);
     expect(await count(`SELECT count(*) n FROM shared_maps`)).toBe(1);
   });

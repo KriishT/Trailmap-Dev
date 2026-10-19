@@ -1,6 +1,6 @@
 {
   "name": "@trailmap/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for querying Trailmap architecture graphs from AI coding agents",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
+    "@trailmap/graph": "*",
     "@trailmap/scanner": "*",
     "express": "^4.21.2",
     "zod": "^3.24.3"

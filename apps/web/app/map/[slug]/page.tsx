@@ -1,43 +1,67 @@
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { supabasePublic } from "@/lib/supabase-public";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { readSnapshotGraph } from "@/lib/graph-read";
+import { resolveShare, unlockCookieName } from "@/lib/share";
 import { MapView } from "@/components/map/map-view";
+import { UnlockForm } from "@/components/map/unlock-form";
+
+export const dynamic = "force-dynamic";
+
+const centered: React.CSSProperties = { minHeight: "100vh", display: "flex", flexDirection: "column", gap: 16, alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" };
 
 export default async function PublicMapPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const [jar, hdrs] = await Promise.all([cookies(), headers()]);
 
-  // Anonymous resolver: returns one row for a live slug, nothing for unknown or expired ones.
-  const { data } = await supabasePublic().rpc("get_shared_map", { p_slug: slug });
-  const shared = Array.isArray(data) ? data[0] : null;
-  if (!shared) notFound();
+  const access = await resolveShare(
+    { anon: supabasePublic(), admin: supabaseAdmin(), cookieSecret: process.env.SHARE_COOKIE_SECRET },
+    slug,
+    {
+      cookie: jar.get(unlockCookieName(slug))?.value,
+      ip: hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? hdrs.get("x-real-ip"),
+      userAgent: hdrs.get("user-agent"),
+    }
+  );
 
-  if (shared.requires_password) {
+  if (access.status === "notfound") notFound();
+  if (access.status === "gone") {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm">
-        This map is password protected. Password entry is not available yet.
-      </div>
+      <main style={centered}>
+        <h1 style={{ margin: 0 }}>This link is no longer available</h1>
+        <p style={{ margin: 0 }}>{access.reason === "expired" ? "It has expired." : "It was revoked by its owner."} Ask the person who shared it for a new one.</p>
+      </main>
+    );
+  }
+  if (access.status === "password") {
+    return (
+      <main style={centered}>
+        <h1 style={{ margin: 0 }}>This architecture map is protected</h1>
+        <p style={{ margin: 0 }}>Enter the password you were given.</p>
+        <UnlockForm slug={slug} />
+      </main>
     );
   }
 
-  const snapshot = shared;
-  const graph = readSnapshotGraph(shared.raw_json);
+  const graph = readSnapshotGraph(access.view.graphRaw);
   if (!graph) notFound();
-  const repoName = shared.repo_full_name ?? "Unknown repo";
+  const { view } = access;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border px-6 h-14 flex items-center gap-3">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(213 94% 68%)" strokeWidth="2">
-          <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-        </svg>
-        <span className="font-semibold text-sm">Trailmap</span>
-        <span className="text-muted-foreground text-sm">·</span>
-        <span className="text-sm">{repoName}</span>
-        <span className="text-xs text-muted-foreground">
-          {snapshot.node_count} services · {snapshot.edge_count} edges
-        </span>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative" }}>
+      <header style={{ borderBottom: "1px solid #ccc", padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 12 }}>
+        <strong>Trailmap</strong>
+        <span>{view.repoFullName}</span>
+        <span style={{ fontSize: 12, opacity: 0.7 }}>{view.nodeCount} nodes, {view.edgeCount} connections, scanned {new Date(view.scannedAt).toISOString().slice(0, 10)}</span>
+        {view.label && <span style={{ marginLeft: "auto", fontSize: 12, border: "1px solid currentColor", padding: "2px 8px" }}>Shared with {view.label}</span>}
       </header>
-      <div className="flex-1 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
+      {view.label && (
+        <div aria-hidden style={{ position: "absolute", inset: 56, pointerEvents: "none", overflow: "hidden", opacity: 0.07, fontSize: 28, fontWeight: 700, transform: "rotate(-24deg)", transformOrigin: "center", lineHeight: 3.2, whiteSpace: "pre-wrap", zIndex: 5 }}>
+          {Array.from({ length: 60 }, () => `${view.label}   `).join("")}
+        </div>
+      )}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "calc(100vh - 56px)" }}>
         <MapView graph={graph} />
       </div>
     </div>
