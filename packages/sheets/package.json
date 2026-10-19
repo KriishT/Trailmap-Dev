@@ -1,0 +1,32 @@
+{
+  "name": "@trailmap/sheets",
+  "version": "0.1.0",
+  "description": "Diagram sheets (system, data-flow, network) as one scene rendered to screen SVG, exported SVG and PDF",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@trailmap/graph": "*",
+    "elkjs": "^0.12.0",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@trailmap/eslint-config": "*",
+    "@trailmap/typescript-config": "*",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.2"
+  }
+}
