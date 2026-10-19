@@ -233,7 +233,7 @@ export function SheetViewer({ endpoint, request, index, selection, onSelect, sco
           {loading && !scene ? <Loading label="Drawing the sheet" height={320} /> : null}
           {scene ? (
             <div className="sheet-scroll" style={{ opacity: loading ? 0.6 : 1 }} data-testid="sheet" data-node-count={scene.nodeCount} data-edge-count={scene.edgeCount}>
-              <div style={{ zoom }}>
+              <div style={{ width: `${zoom * 100}%` }}>
                 <div className="theme-light-only" dangerouslySetInnerHTML={{ __html: scene.svg.light }} />
                 <div className="theme-dark-only" dangerouslySetInnerHTML={{ __html: scene.svg.dark }} />
               </div>

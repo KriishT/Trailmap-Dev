@@ -25,7 +25,7 @@
 .sheet-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 10px; }
 .sheet-toolbar .field { min-width: 140px; }
 .sheet-scroll { overflow: auto; max-height: 72vh; min-height: 280px; }
-.sheet-scroll svg { display: block; max-width: none; height: auto; }
+.sheet-scroll svg { display: block; width: 100%; min-width: 560px; height: auto; }
 .sheet-scroll svg [data-node-id], .sheet-scroll svg [data-edge-id] { cursor: pointer; }
 .sheet-scroll svg [data-node-id]:focus-visible, .sheet-scroll svg [data-edge-id]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .sheet-scroll svg .is-picked rect:first-of-type { stroke-width: 3; }
@@ -55,7 +55,7 @@
 /* Landing page */
 .hero { padding: 40px 0 24px; display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (min-width: 1000px) { .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; padding-top: 64px; } }
-.hero h1 { font-size: var(--step-4); letter-spacing: 0; }
+.hero h1 { font-size: clamp(2rem, 1.1rem + 2.1vw, 2.75rem); letter-spacing: 0; }
 .hero .lede { font-size: var(--step-1); color: var(--ink-2); max-width: 46ch; margin-top: 16px; }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
 .band { border-top: 1.5px solid var(--ink); padding: 48px 0; }
