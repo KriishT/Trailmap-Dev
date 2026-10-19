@@ -163,6 +163,15 @@ describe("evaluateDrift", () => {
     expect(evaluateDrift({ base: now, head: now, scopes: [], policy: policy() }).findings).toEqual([]);
   });
 
+  it("reports one finding when the same range is open both on a port and on any port", () => {
+    const db = node("tf:db", "database", { public: true, exposure: [
+      { direction: "ingress", cidr: "0.0.0.0/0", port: null, source: "main.tf", line: 3 },
+      { direction: "ingress", cidr: "0.0.0.0/0", port: 5432, source: "main.tf", line: 9 },
+    ] });
+    const r = evaluateDrift({ base: graph([]), head: graph([db]), scopes: [], policy: policy() });
+    expect(r.findings.filter((f) => f.rule === "public_exposure").map((f) => f.key)).toEqual(["public_exposure:tf:db:ingress|0.0.0.0/0|5432"]);
+  });
+
   it("flags nodes that became public without listed exposure (Ingress)", () => {
     const priv = graph([A], []);
     const pub = graph([{ ...A, public: true }], []);

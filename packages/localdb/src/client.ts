@@ -162,7 +162,7 @@ class Query implements PromiseLike<Result> {
   private async run(): Promise<Result> {
     try {
       const { sql, params } = this.build();
-      const rows = await this.client.db.as<Record<string, unknown>>(
+      const rows = await (await this.client.db).as<Record<string, unknown>>(
         this.client.role,
         this.client.userId,
         sql,
@@ -191,7 +191,8 @@ class Query implements PromiseLike<Result> {
 
 export class PgClient {
   constructor(
-    readonly db: LocalDb,
+    /** The database, or a promise of it (so clients can be created before it is ready). */
+    readonly db: LocalDb | Promise<LocalDb>,
     readonly role: Role,
     readonly userId: string | null
   ) {}
@@ -204,7 +205,7 @@ export class PgClient {
     try {
       const names = Object.keys(args);
       const sql = `SELECT * FROM ${fn}(${names.map((n, i) => `${n} => $${i + 1}`).join(", ")})`;
-      const rows = await this.db.as<Record<string, unknown>>(this.role, this.userId, sql, names.map((n) => args[n]));
+      const rows = await (await this.db).as<Record<string, unknown>>(this.role, this.userId, sql, names.map((n) => args[n]));
       // supabase-js returns the bare value for a function that returns a single scalar.
       const only = rows.length === 1 ? Object.keys(rows[0]!) : [];
       if (only.length === 1 && only[0] === fn) return { data: rows[0]![fn], error: null };
@@ -217,12 +218,12 @@ export class PgClient {
   auth = {
     getUser: async () => {
       if (!this.userId) return { data: { user: null } };
-      const rows = await this.db.admin<{ email: string }>(`SELECT email FROM auth.users WHERE id = $1`, [this.userId]);
+      const rows = await (await this.db).admin<{ email: string }>(`SELECT email FROM auth.users WHERE id = $1`, [this.userId]);
       return { data: { user: { id: this.userId, email: rows[0]?.email, user_metadata: {} } } };
     },
   };
 }
 
-export const userClient = (db: LocalDb, userId: string) => new PgClient(db, "authenticated", userId);
-export const anonClient = (db: LocalDb) => new PgClient(db, "anon", null);
-export const adminClient = (db: LocalDb) => new PgClient(db, "service_role", null);
+export const userClient = (db: LocalDb | Promise<LocalDb>, userId: string) => new PgClient(db, "authenticated", userId);
+export const anonClient = (db: LocalDb | Promise<LocalDb>) => new PgClient(db, "anon", null);
+export const adminClient = (db: LocalDb | Promise<LocalDb>) => new PgClient(db, "service_role", null);

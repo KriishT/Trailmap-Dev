@@ -31,10 +31,19 @@ const STATEFUL = new Set(["database", "storage", "queue"]);
 
 const sevRank: Record<Severity, number> = { high: 3, medium: 2, low: 1 };
 
+const EVIDENCE_RANK: Record<string, number> = {
+  "call-site": 0, "sdk-import": 1, "http-call": 2, env: 3, schema: 4, iac: 5, terraform: 5, cloudformation: 5,
+  compose: 6, kubernetes: 6, helm: 6, import: 7, manual: 8, dependency: 9, declared: 10,
+};
+
+/** Up to four pieces of evidence, the most direct first: code that uses the thing beats a manifest or deploy line. */
 function firstEvidence(...lists: Array<GraphEvidence[] | undefined>): GraphEvidence[] {
-  const out: GraphEvidence[] = [];
-  for (const list of lists) for (const e of list ?? []) if (out.length < 4) out.push(e);
-  return out;
+  const all = lists.flatMap((l) => l ?? []);
+  const seen = new Set<string>();
+  const unique = all.filter((e) => { const k = `${e.kind}|${e.source}|${e.line ?? 0}`; return seen.has(k) ? false : (seen.add(k), true); });
+  return unique
+    .sort((a, b) => (EVIDENCE_RANK[a.kind] ?? 9) - (EVIDENCE_RANK[b.kind] ?? 9) || a.source.localeCompare(b.source) || (a.line ?? 0) - (b.line ?? 0))
+    .slice(0, 4);
 }
 
 const nameOf = (graph: DependencyGraph, id: string) => graph.nodes.find((n) => n.id === id)?.name ?? id;
@@ -145,7 +154,9 @@ export function evaluateDrift({ base, head, scopes, policy }: DriftInput): Drift
       if (node.id === "internet") continue;
       const before = baseNodes.get(node.id);
       const had = exposureKeys(before);
-      const fresh = (node.exposure ?? []).filter((e) => !had.has(`${e.direction}|${e.cidr}|${e.port ?? "any"}`));
+      const candidates = (node.exposure ?? []).filter((e) => !had.has(`${e.direction}|${e.cidr}|${e.port ?? "any"}`));
+      // "Open on any port" and "open on :5432" to the same range are one fact; keep the specific one.
+      const fresh = candidates.filter((e) => e.port !== null || !candidates.some((o) => o !== e && o.port !== null && o.direction === e.direction && o.cidr === e.cidr));
       for (const exp of fresh) {
         const stateful = STATEFUL.has(node.type) || node.type === "service";
         findings.push({

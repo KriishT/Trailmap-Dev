@@ -1,0 +1,5044 @@
+{
+  "repo": {
+    "fullName": "acme/shop",
+    "defaultBranch": "main"
+  },
+  "revisions": [
+    {
+      "label": "Rev A",
+      "date": "2026-01-12T09:00:00.000Z",
+      "commit": "a1f3c09b7d52",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-01-12T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 12,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "39daf1081287b7a16c0a1c2f8f4004d0c7f052199c4ede0609487287ba0c846d"
+        },
+        "nodes": [
+          {
+            "id": "db:postgres",
+            "name": "PostgreSQL",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "engine": "postgres",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              }
+            ]
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 13,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 12,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_780aa23aa57c",
+            "from": "service:services/orders",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 4,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 9,
+                "snippet": "await fetch(process.env.PAYMENTS_URL + \"/charge\", { method: \"POST\", body: JSON.stringify({ order: rows[0].id }) });"
+              }
+            ]
+          },
+          {
+            "id": "e_5cda778b50c6",
+            "from": "service:services/payments",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 4,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "Rev B",
+      "date": "2026-02-16T09:00:00.000Z",
+      "commit": "b27d4e18c9a0",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-02-16T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 12,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "4c675a575b3ed44f5780e6f461ef35e382508f1ae749884f5b8052ebe3521868"
+        },
+        "nodes": [
+          {
+            "id": "db:postgres",
+            "name": "PostgreSQL",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "engine": "postgres",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              }
+            ]
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 13,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 15,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "vendor:stripe",
+            "name": "Stripe",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "stripe",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 10,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_780aa23aa57c",
+            "from": "service:services/orders",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 4,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 9,
+                "snippet": "await fetch(process.env.PAYMENTS_URL + \"/charge\", { method: \"POST\", body: JSON.stringify({ order: rows[0].id }) });"
+              }
+            ]
+          },
+          {
+            "id": "e_5cda778b50c6",
+            "from": "service:services/payments",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 6,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_b2e80aa760c7",
+            "from": "service:services/payments",
+            "to": "vendor:stripe",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "STRIPE_SECRET_KEY is set for payments",
+                "line": 18,
+                "snippet": "STRIPE_SECRET_KEY: ***"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency stripe",
+                "line": 9,
+                "snippet": "\"stripe\": \"^14.0.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports stripe (Stripe)",
+                "line": 3,
+                "snippet": "import Stripe from \"stripe\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads STRIPE_SECRET_KEY",
+                "line": 5,
+                "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 10,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "Rev C",
+      "date": "2026-03-23T09:00:00.000Z",
+      "commit": "c39e5f29d0b1",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-03-23T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 12,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "24008d5d2082f35471de5c7230245ba7f009114ca5fb2f86df3472e76dc902a1"
+        },
+        "nodes": [
+          {
+            "id": "db:postgres",
+            "name": "PostgreSQL",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "engine": "postgres",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 13,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 18,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "vendor:segment",
+            "name": "Segment",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "segment",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 14,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:stripe",
+            "name": "Stripe",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "stripe",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 12,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_780aa23aa57c",
+            "from": "service:services/orders",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 4,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 9,
+                "snippet": "await fetch(process.env.PAYMENTS_URL + \"/charge\", { method: \"POST\", body: JSON.stringify({ order: rows[0].id }) });"
+              }
+            ]
+          },
+          {
+            "id": "e_5cda778b50c6",
+            "from": "service:services/payments",
+            "to": "db:postgres",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 8,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_cb0605dcd52a",
+            "from": "service:services/payments",
+            "to": "vendor:segment",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "SEGMENT_WRITE_KEY is set for payments",
+                "line": 19,
+                "snippet": "SEGMENT_WRITE_KEY: wk_placeholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency @segment/analytics-node",
+                "line": 10,
+                "snippet": "\"@segment/analytics-node\": \"^1.1.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports @segment/analytics-node (Segment)",
+                "line": 4,
+                "snippet": "import { Analytics } from \"@segment/analytics-node\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads SEGMENT_WRITE_KEY",
+                "line": 7,
+                "snippet": "const analytics = new Analytics({ writeKey: process.env.SEGMENT_WRITE_KEY as string });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 14,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b2e80aa760c7",
+            "from": "service:services/payments",
+            "to": "vendor:stripe",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "STRIPE_SECRET_KEY is set for payments",
+                "line": 18,
+                "snippet": "STRIPE_SECRET_KEY: ***"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency stripe",
+                "line": 9,
+                "snippet": "\"stripe\": \"^14.0.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports stripe (Stripe)",
+                "line": 3,
+                "snippet": "import Stripe from \"stripe\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads STRIPE_SECRET_KEY",
+                "line": 6,
+                "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 12,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "Rev D",
+      "date": "2026-04-20T09:00:00.000Z",
+      "commit": "d4a06f3ae1c2",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-04-20T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 13,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "05d66c8f0bbfe5e363459fe9b1c8fad4936becb0efff1e068d5efdf1c3147220"
+        },
+        "nodes": [
+          {
+            "id": "internet",
+            "name": "Internet",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "public": true,
+            "evidence": []
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "deployed as aws_ecs_service \"gateway\"",
+                "line": 96
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_ecs_service",
+              "address": "aws_ecs_service.gateway"
+            }
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 13,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 18,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "tf:aws_db_instance.main",
+            "name": "shop-db",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_db_instance",
+              "address": "aws_db_instance.main"
+            },
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_db_instance \"main\"",
+                "line": 70
+              }
+            ],
+            "engine": "postgres",
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_lb.web",
+            "name": "web",
+            "type": "loadbalancer",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "listener :443 HTTPS"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_lb",
+              "address": "aws_lb.web"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\"",
+                "line": 44
+              }
+            ],
+            "public": true,
+            "exposure": [
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "protocol": "tcp",
+                "source": "infra/main.tf",
+                "line": 20
+              },
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "source": "infra/main.tf",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_s3_bucket.statements",
+            "name": "acme-statements",
+            "type": "storage",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_s3_bucket",
+              "address": "aws_s3_bucket.statements"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_s3_bucket \"statements\"",
+                "line": 78
+              }
+            ],
+            "engine": "s3"
+          },
+          {
+            "id": "tf:aws_vpc.main",
+            "name": "main",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "subnet private_a (private)",
+              "subnet public_a (public)"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_vpc",
+              "address": "aws_vpc.main"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_vpc \"main\"",
+                "line": 5
+              }
+            ]
+          },
+          {
+            "id": "vendor:aws",
+            "name": "Amazon Web Services",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "aws",
+            "evidence": []
+          },
+          {
+            "id": "vendor:segment",
+            "name": "Segment",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "segment",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 14,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:stripe",
+            "name": "Stripe",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "stripe",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 12,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_13c2d639ee70",
+            "from": "internet",
+            "to": "tf:aws_lb.web",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\" is internet-facing",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_a169c822b260",
+            "from": "service:services/gateway",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_db_instance.main",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_8c9babb8dd5b",
+            "from": "service:services/gateway",
+            "to": "tf:aws_s3_bucket.statements",
+            "type": "storage",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_90dc99c3b6fd",
+            "from": "service:services/gateway",
+            "to": "vendor:aws",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 9,
+                "snippet": "await fetch(process.env.PAYMENTS_URL + \"/charge\", { method: \"POST\", body: JSON.stringify({ order: rows[0].id }) });"
+              }
+            ]
+          },
+          {
+            "id": "e_2ff9056df5a8",
+            "from": "service:services/orders",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 4,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_de32be2c3514",
+            "from": "service:services/payments",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 8,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_cb0605dcd52a",
+            "from": "service:services/payments",
+            "to": "vendor:segment",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "SEGMENT_WRITE_KEY is set for payments",
+                "line": 19,
+                "snippet": "SEGMENT_WRITE_KEY: wk_placeholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency @segment/analytics-node",
+                "line": 10,
+                "snippet": "\"@segment/analytics-node\": \"^1.1.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports @segment/analytics-node (Segment)",
+                "line": 4,
+                "snippet": "import { Analytics } from \"@segment/analytics-node\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads SEGMENT_WRITE_KEY",
+                "line": 7,
+                "snippet": "const analytics = new Analytics({ writeKey: process.env.SEGMENT_WRITE_KEY as string });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 14,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b2e80aa760c7",
+            "from": "service:services/payments",
+            "to": "vendor:stripe",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "STRIPE_SECRET_KEY is set for payments",
+                "line": 18,
+                "snippet": "STRIPE_SECRET_KEY: ***"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency stripe",
+                "line": 9,
+                "snippet": "\"stripe\": \"^14.0.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports stripe (Stripe)",
+                "line": 3,
+                "snippet": "import Stripe from \"stripe\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads STRIPE_SECRET_KEY",
+                "line": 6,
+                "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 12,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b72361ae240a",
+            "from": "tf:aws_lb.web",
+            "to": "service:services/gateway",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb.web forwards to aws_ecs_service.gateway",
+                "line": 96
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "Rev E",
+      "date": "2026-05-25T09:00:00.000Z",
+      "commit": "e5b17a4bf2d3",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-05-25T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 14,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "d183e4f13dae155555e3aba64fbe8827fb18a3bb4157a3b1f2849abc8d33a866"
+        },
+        "nodes": [
+          {
+            "id": "internet",
+            "name": "Internet",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "public": true,
+            "evidence": []
+          },
+          {
+            "id": "queue:kafka",
+            "name": "Apache Kafka",
+            "type": "queue",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "engine": "kafka",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"kafka\" (image confluentinc/cp-kafka:7.6.0)",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              }
+            ]
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "deployed as aws_ecs_service \"gateway\"",
+                "line": 96
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_ecs_service",
+              "address": "aws_ecs_service.gateway"
+            }
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 19,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 20,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "tf:aws_db_instance.main",
+            "name": "shop-db",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_db_instance",
+              "address": "aws_db_instance.main"
+            },
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_db_instance \"main\"",
+                "line": 70
+              }
+            ],
+            "engine": "postgres",
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_lb.web",
+            "name": "web",
+            "type": "loadbalancer",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "listener :443 HTTPS"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_lb",
+              "address": "aws_lb.web"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\"",
+                "line": 44
+              }
+            ],
+            "public": true,
+            "exposure": [
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "protocol": "tcp",
+                "source": "infra/main.tf",
+                "line": 20
+              },
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "source": "infra/main.tf",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_s3_bucket.statements",
+            "name": "acme-statements",
+            "type": "storage",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_s3_bucket",
+              "address": "aws_s3_bucket.statements"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_s3_bucket \"statements\"",
+                "line": 78
+              }
+            ],
+            "engine": "s3"
+          },
+          {
+            "id": "tf:aws_vpc.main",
+            "name": "main",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "subnet private_a (private)",
+              "subnet public_a (public)"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_vpc",
+              "address": "aws_vpc.main"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_vpc \"main\"",
+                "line": 5
+              }
+            ]
+          },
+          {
+            "id": "vendor:aws",
+            "name": "Amazon Web Services",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "aws",
+            "evidence": []
+          },
+          {
+            "id": "vendor:segment",
+            "name": "Segment",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "segment",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 16,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:stripe",
+            "name": "Stripe",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "stripe",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 14,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:twilio",
+            "name": "Twilio",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "twilio",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 14,
+                    "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                  },
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 15,
+                    "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_13c2d639ee70",
+            "from": "internet",
+            "to": "tf:aws_lb.web",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\" is internet-facing",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_a169c822b260",
+            "from": "service:services/gateway",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_db_instance.main",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_8c9babb8dd5b",
+            "from": "service:services/gateway",
+            "to": "tf:aws_s3_bucket.statements",
+            "type": "storage",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_90dc99c3b6fd",
+            "from": "service:services/gateway",
+            "to": "vendor:aws",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_f1b433131487",
+            "from": "service:services/orders",
+            "to": "queue:kafka",
+            "type": "queue",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "KAFKA_BROKERS is set for orders",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency kafkajs",
+                "line": 9,
+                "snippet": "\"kafkajs\": \"^2.2.4\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports kafkajs (Apache Kafka)",
+                "line": 3,
+                "snippet": "import { Kafka } from \"kafkajs\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads KAFKA_BROKERS",
+                "line": 7,
+                "snippet": "const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] });"
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "medium",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              }
+            ]
+          },
+          {
+            "id": "e_2ff9056df5a8",
+            "from": "service:services/orders",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 6,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_ac93b092a28d",
+            "from": "service:services/orders",
+            "to": "vendor:twilio",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "TWILIO_ACCOUNT_SID is set for orders",
+                "line": 15,
+                "snippet": "TWILIO_ACCOUNT_SID: ACplaceholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency twilio",
+                "line": 10,
+                "snippet": "\"twilio\": \"^5.0.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports twilio (Twilio)",
+                "line": 4,
+                "snippet": "import twilio from \"twilio\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_ACCOUNT_SID",
+                "line": 9,
+                "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_AUTH_TOKEN",
+                "line": 9,
+                "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_PHONE_NUMBER",
+                "line": 15,
+                "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 14,
+                    "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                  },
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 15,
+                    "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_0401b9f10e6f",
+            "from": "service:services/payments",
+            "to": "queue:kafka",
+            "type": "queue",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "KAFKA_BROKERS is set for payments",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency kafkajs",
+                "line": 11,
+                "snippet": "\"kafkajs\": \"^2.2.4\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports kafkajs (Apache Kafka)",
+                "line": 4,
+                "snippet": "import { Kafka } from \"kafkajs\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads KAFKA_BROKERS",
+                "line": 10,
+                "snippet": "const consumer = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] }).consumer({ groupId: \"payments\" });"
+              }
+            ]
+          },
+          {
+            "id": "e_de32be2c3514",
+            "from": "service:services/payments",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 9,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_cb0605dcd52a",
+            "from": "service:services/payments",
+            "to": "vendor:segment",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "SEGMENT_WRITE_KEY is set for payments",
+                "line": 21,
+                "snippet": "SEGMENT_WRITE_KEY: wk_placeholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency @segment/analytics-node",
+                "line": 10,
+                "snippet": "\"@segment/analytics-node\": \"^1.1.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports @segment/analytics-node (Segment)",
+                "line": 5,
+                "snippet": "import { Analytics } from \"@segment/analytics-node\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads SEGMENT_WRITE_KEY",
+                "line": 8,
+                "snippet": "const analytics = new Analytics({ writeKey: process.env.SEGMENT_WRITE_KEY as string });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 16,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b2e80aa760c7",
+            "from": "service:services/payments",
+            "to": "vendor:stripe",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "STRIPE_SECRET_KEY is set for payments",
+                "line": 20,
+                "snippet": "STRIPE_SECRET_KEY: ***"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency stripe",
+                "line": 9,
+                "snippet": "\"stripe\": \"^14.0.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports stripe (Stripe)",
+                "line": 3,
+                "snippet": "import Stripe from \"stripe\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads STRIPE_SECRET_KEY",
+                "line": 7,
+                "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 14,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b72361ae240a",
+            "from": "tf:aws_lb.web",
+            "to": "service:services/gateway",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb.web forwards to aws_ecs_service.gateway",
+                "line": 96
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": "Rev F",
+      "date": "2026-06-29T09:00:00.000Z",
+      "commit": "f6c28b5c03e4",
+      "graph": {
+        "meta": {
+          "repo": "acme/shop",
+          "scanned_at": "2026-06-29T09:00:00.000Z",
+          "language_breakdown": {
+            "typescript": 3
+          },
+          "total_files": 14,
+          "graphSchemaVersion": 2,
+          "scannerVersion": "0.2.0",
+          "graphHash": "9ab5d3773a5ea66a97022dcc11854a117346d9fedbacc699daeeacbd854290d2"
+        },
+        "nodes": [
+          {
+            "id": "internet",
+            "name": "Internet",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "public": true,
+            "evidence": []
+          },
+          {
+            "id": "queue:kafka",
+            "name": "Apache Kafka",
+            "type": "queue",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "engine": "kafka",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"kafka\" (image confluentinc/cp-kafka:7.6.0)",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              }
+            ]
+          },
+          {
+            "id": "service:services/gateway",
+            "name": "gateway",
+            "type": "service",
+            "language": "typescript",
+            "port": 3000,
+            "endpoints": [],
+            "path": "services/gateway",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"gateway\"",
+                "line": 2,
+                "snippet": "gateway:"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "deployed as aws_ecs_service \"gateway\"",
+                "line": 96
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/gateway/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/gateway/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Listens on port 3000",
+                "line": 15,
+                "snippet": "app.listen(3000);"
+              }
+            ],
+            "framework": "express",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_ecs_service",
+              "address": "aws_ecs_service.gateway"
+            }
+          },
+          {
+            "id": "service:services/orders",
+            "name": "orders",
+            "type": "service",
+            "language": "typescript",
+            "port": 3001,
+            "endpoints": [],
+            "path": "services/orders",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"orders\"",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/orders/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/orders/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/orders/src/index.ts",
+                "detail": "Listens on port 3001",
+                "line": 19,
+                "snippet": "app.listen(3001);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "service:services/payments",
+            "name": "payments",
+            "type": "service",
+            "language": "typescript",
+            "port": 3002,
+            "endpoints": [],
+            "path": "services/payments",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "Deployed as compose \"payments\"",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/Dockerfile",
+                "detail": "Dockerfile present: runs as a container"
+              },
+              {
+                "kind": "framework",
+                "source": "services/payments/package.json",
+                "detail": "Detected framework express"
+              },
+              {
+                "kind": "manifest",
+                "source": "services/payments/package.json",
+                "detail": "Service root from package.json"
+              },
+              {
+                "kind": "port",
+                "source": "services/payments/src/index.ts",
+                "detail": "Listens on port 3002",
+                "line": 20,
+                "snippet": "app.listen(3002);"
+              }
+            ],
+            "framework": "express"
+          },
+          {
+            "id": "tf:aws_db_instance.main",
+            "name": "shop-db",
+            "type": "database",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_db_instance",
+              "address": "aws_db_instance.main"
+            },
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "compose service \"db\" (image postgres:15)",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_db_instance \"main\"",
+                "line": 70
+              }
+            ],
+            "engine": "postgres",
+            "public": true,
+            "exposure": [
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 5432,
+                "protocol": "tcp",
+                "source": "infra/main.tf",
+                "line": 32
+              },
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": null,
+                "source": "infra/main.tf",
+                "line": 70
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_lb.web",
+            "name": "web",
+            "type": "loadbalancer",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "listener :443 HTTPS"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_lb",
+              "address": "aws_lb.web"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\"",
+                "line": 44
+              }
+            ],
+            "public": true,
+            "exposure": [
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "protocol": "tcp",
+                "source": "infra/main.tf",
+                "line": 20
+              },
+              {
+                "direction": "ingress",
+                "cidr": "0.0.0.0/0",
+                "port": 443,
+                "source": "infra/main.tf",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "tf:aws_s3_bucket.statements",
+            "name": "acme-statements",
+            "type": "storage",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_s3_bucket",
+              "address": "aws_s3_bucket.statements"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_s3_bucket \"statements\"",
+                "line": 78
+              }
+            ],
+            "engine": "s3"
+          },
+          {
+            "id": "tf:aws_vpc.main",
+            "name": "main",
+            "type": "network",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [
+              "subnet private_a (private)",
+              "subnet public_a (public)"
+            ],
+            "path": "infra",
+            "iac": {
+              "provider": "terraform",
+              "resourceType": "aws_vpc",
+              "address": "aws_vpc.main"
+            },
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_vpc \"main\"",
+                "line": 5
+              }
+            ]
+          },
+          {
+            "id": "vendor:aws",
+            "name": "Amazon Web Services",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "aws",
+            "evidence": []
+          },
+          {
+            "id": "vendor:segment",
+            "name": "Segment",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "segment",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 16,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:stripe",
+            "name": "Stripe",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "stripe",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 14,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "vendor:twilio",
+            "name": "Twilio",
+            "type": "saas",
+            "language": "unknown",
+            "port": null,
+            "endpoints": [],
+            "path": "",
+            "vendor": "twilio",
+            "evidence": [],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 14,
+                    "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                  },
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 15,
+                    "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "e_13c2d639ee70",
+            "from": "internet",
+            "to": "tf:aws_lb.web",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb \"web\" is internet-facing",
+                "line": 44
+              }
+            ]
+          },
+          {
+            "id": "e_75877e0d5eff",
+            "from": "service:services/gateway",
+            "to": "service:services/orders",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "ORDERS_URL is set for gateway",
+                "line": 7,
+                "snippet": "ORDERS_URL: http://orders:3001"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads ORDERS_URL",
+                "line": 6,
+                "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+              }
+            ]
+          },
+          {
+            "id": "e_b5390dd50a7d",
+            "from": "service:services/gateway",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for gateway",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              },
+              {
+                "kind": "env",
+                "source": "services/gateway/src/index.ts",
+                "detail": "Reads PAYMENTS_URL",
+                "line": 11,
+                "snippet": "const r = await fetch(`${process.env.PAYMENTS_URL}/health`);"
+              }
+            ]
+          },
+          {
+            "id": "e_a169c822b260",
+            "from": "service:services/gateway",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_db_instance.main",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_8c9babb8dd5b",
+            "from": "service:services/gateway",
+            "to": "tf:aws_s3_bucket.statements",
+            "type": "storage",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_90dc99c3b6fd",
+            "from": "service:services/gateway",
+            "to": "vendor:aws",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+                "line": 96
+              }
+            ]
+          },
+          {
+            "id": "e_f1b433131487",
+            "from": "service:services/orders",
+            "to": "queue:kafka",
+            "type": "queue",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "KAFKA_BROKERS is set for orders",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency kafkajs",
+                "line": 9,
+                "snippet": "\"kafkajs\": \"^2.2.4\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports kafkajs (Apache Kafka)",
+                "line": 3,
+                "snippet": "import { Kafka } from \"kafkajs\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads KAFKA_BROKERS",
+                "line": 7,
+                "snippet": "const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] });"
+              }
+            ]
+          },
+          {
+            "id": "e_58fab2799ad6",
+            "from": "service:services/orders",
+            "to": "service:services/payments",
+            "type": "http",
+            "confidence": "medium",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "PAYMENTS_URL is set for orders",
+                "line": 8,
+                "snippet": "PAYMENTS_URL: http://payments:3002"
+              }
+            ]
+          },
+          {
+            "id": "e_2ff9056df5a8",
+            "from": "service:services/orders",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for orders",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 6,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ]
+          },
+          {
+            "id": "e_ac93b092a28d",
+            "from": "service:services/orders",
+            "to": "vendor:twilio",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "TWILIO_ACCOUNT_SID is set for orders",
+                "line": 15,
+                "snippet": "TWILIO_ACCOUNT_SID: ACplaceholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/orders/package.json",
+                "detail": "Declares dependency twilio",
+                "line": 10,
+                "snippet": "\"twilio\": \"^5.0.0\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/orders/src/index.ts",
+                "detail": "Imports twilio (Twilio)",
+                "line": 4,
+                "snippet": "import twilio from \"twilio\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_ACCOUNT_SID",
+                "line": 9,
+                "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_AUTH_TOKEN",
+                "line": 9,
+                "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+              },
+              {
+                "kind": "env",
+                "source": "services/orders/src/index.ts",
+                "detail": "Reads TWILIO_PHONE_NUMBER",
+                "line": 15,
+                "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 14,
+                    "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                  },
+                  {
+                    "kind": "call-site",
+                    "source": "services/orders/src/index.ts",
+                    "detail": "messages(...) handles PII for Twilio",
+                    "line": 15,
+                    "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_0401b9f10e6f",
+            "from": "service:services/payments",
+            "to": "queue:kafka",
+            "type": "queue",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "KAFKA_BROKERS is set for payments",
+                "line": 14,
+                "snippet": "KAFKA_BROKERS: kafka:9092"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency kafkajs",
+                "line": 11,
+                "snippet": "\"kafkajs\": \"^2.2.4\""
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports kafkajs (Apache Kafka)",
+                "line": 4,
+                "snippet": "import { Kafka } from \"kafkajs\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads KAFKA_BROKERS",
+                "line": 10,
+                "snippet": "const consumer = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] }).consumer({ groupId: \"payments\" });"
+              }
+            ]
+          },
+          {
+            "id": "e_de32be2c3514",
+            "from": "service:services/payments",
+            "to": "tf:aws_db_instance.main",
+            "type": "database",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "DATABASE_URL is set for payments",
+                "line": 12,
+                "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency pg",
+                "line": 8,
+                "snippet": "\"pg\": \"^8.11.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports pg (PostgreSQL)",
+                "line": 2,
+                "snippet": "import { Pool } from \"pg\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads DATABASE_URL",
+                "line": 9,
+                "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "payment_methods.card_number holds PAN",
+                    "line": 16,
+                    "snippet": "card_number text"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.email holds PII",
+                    "line": 9,
+                    "snippet": "email text NOT NULL,"
+                  },
+                  {
+                    "kind": "schema",
+                    "source": "services/payments/migrations/001_init.sql",
+                    "detail": "customers.phone_number holds PII",
+                    "line": 10,
+                    "snippet": "phone_number text"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_cb0605dcd52a",
+            "from": "service:services/payments",
+            "to": "vendor:segment",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "SEGMENT_WRITE_KEY is set for payments",
+                "line": 21,
+                "snippet": "SEGMENT_WRITE_KEY: wk_placeholder"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency @segment/analytics-node",
+                "line": 10,
+                "snippet": "\"@segment/analytics-node\": \"^1.1.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports @segment/analytics-node (Segment)",
+                "line": 5,
+                "snippet": "import { Analytics } from \"@segment/analytics-node\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads SEGMENT_WRITE_KEY",
+                "line": 8,
+                "snippet": "const analytics = new Analytics({ writeKey: process.env.SEGMENT_WRITE_KEY as string });"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PII",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "identify(...) handles PII for Segment",
+                    "line": 16,
+                    "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b2e80aa760c7",
+            "from": "service:services/payments",
+            "to": "vendor:stripe",
+            "type": "http",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "compose",
+                "source": "docker-compose.yml",
+                "detail": "STRIPE_SECRET_KEY is set for payments",
+                "line": 20,
+                "snippet": "STRIPE_SECRET_KEY: ***"
+              },
+              {
+                "kind": "dependency",
+                "source": "services/payments/package.json",
+                "detail": "Declares dependency stripe",
+                "line": 9,
+                "snippet": "\"stripe\": \"^14.0.0\","
+              },
+              {
+                "kind": "sdk-import",
+                "source": "services/payments/src/index.ts",
+                "detail": "Imports stripe (Stripe)",
+                "line": 3,
+                "snippet": "import Stripe from \"stripe\";"
+              },
+              {
+                "kind": "env",
+                "source": "services/payments/src/index.ts",
+                "detail": "Reads STRIPE_SECRET_KEY",
+                "line": 7,
+                "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+              }
+            ],
+            "dataClasses": [
+              {
+                "class": "PAN",
+                "certainty": "evidenced",
+                "evidence": [
+                  {
+                    "kind": "call-site",
+                    "source": "services/payments/src/index.ts",
+                    "detail": "paymentIntents(...) handles PAN for Stripe",
+                    "line": 14,
+                    "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                  }
+                ]
+              },
+              {
+                "class": "PII",
+                "certainty": "possible",
+                "evidence": [
+                  {
+                    "kind": "sdk-import",
+                    "source": "services/payments",
+                    "detail": "Stripe typically processes PII"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e_b72361ae240a",
+            "from": "tf:aws_lb.web",
+            "to": "service:services/gateway",
+            "type": "network",
+            "confidence": "high",
+            "evidence": [
+              {
+                "kind": "terraform",
+                "source": "infra/main.tf",
+                "detail": "aws_lb.web forwards to aws_ecs_service.gateway",
+                "line": 96
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "scope": {
+    "name": "PCI cardholder data environment",
+    "nodeIds": [
+      "service:services/payments",
+      "db:postgres"
+    ]
+  },
+  "pullRequest": {
+    "number": 12,
+    "title": "Track order list views in Mixpanel",
+    "headSha": "9c1d2e3f4a5b",
+    "graph": {
+      "meta": {
+        "repo": "acme/shop",
+        "scanned_at": "2026-07-02T09:00:00.000Z",
+        "language_breakdown": {
+          "typescript": 3
+        },
+        "total_files": 14,
+        "graphSchemaVersion": 2,
+        "scannerVersion": "0.2.0",
+        "graphHash": "fa6a1d0c28dc7e5d2343c9f95886ee85de2420436be0a38288e22d5bae0dcdef"
+      },
+      "nodes": [
+        {
+          "id": "internet",
+          "name": "Internet",
+          "type": "network",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "public": true,
+          "evidence": []
+        },
+        {
+          "id": "queue:kafka",
+          "name": "Apache Kafka",
+          "type": "queue",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "engine": "kafka",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "compose service \"kafka\" (image confluentinc/cp-kafka:7.6.0)",
+              "line": 15,
+              "snippet": "KAFKA_BROKERS: kafka:9092"
+            }
+          ]
+        },
+        {
+          "id": "service:services/gateway",
+          "name": "gateway",
+          "type": "service",
+          "language": "typescript",
+          "port": 3000,
+          "endpoints": [],
+          "path": "services/gateway",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "Deployed as compose \"gateway\"",
+              "line": 2,
+              "snippet": "gateway:"
+            },
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "deployed as aws_ecs_service \"gateway\"",
+              "line": 96
+            },
+            {
+              "kind": "port",
+              "source": "services/gateway/Dockerfile",
+              "detail": "Dockerfile present: runs as a container"
+            },
+            {
+              "kind": "framework",
+              "source": "services/gateway/package.json",
+              "detail": "Detected framework express"
+            },
+            {
+              "kind": "manifest",
+              "source": "services/gateway/package.json",
+              "detail": "Service root from package.json"
+            },
+            {
+              "kind": "port",
+              "source": "services/gateway/src/index.ts",
+              "detail": "Listens on port 3000",
+              "line": 13,
+              "snippet": "app.listen(3000);"
+            }
+          ],
+          "framework": "express",
+          "iac": {
+            "provider": "terraform",
+            "resourceType": "aws_ecs_service",
+            "address": "aws_ecs_service.gateway"
+          }
+        },
+        {
+          "id": "service:services/orders",
+          "name": "orders",
+          "type": "service",
+          "language": "typescript",
+          "port": 3001,
+          "endpoints": [],
+          "path": "services/orders",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "Deployed as compose \"orders\"",
+              "line": 7,
+              "snippet": "ORDERS_URL: http://orders:3001"
+            },
+            {
+              "kind": "port",
+              "source": "services/orders/Dockerfile",
+              "detail": "Dockerfile present: runs as a container"
+            },
+            {
+              "kind": "framework",
+              "source": "services/orders/package.json",
+              "detail": "Detected framework express"
+            },
+            {
+              "kind": "manifest",
+              "source": "services/orders/package.json",
+              "detail": "Service root from package.json"
+            },
+            {
+              "kind": "port",
+              "source": "services/orders/src/index.ts",
+              "detail": "Listens on port 3001",
+              "line": 19,
+              "snippet": "app.listen(3001);"
+            }
+          ],
+          "framework": "express"
+        },
+        {
+          "id": "service:services/payments",
+          "name": "payments",
+          "type": "service",
+          "language": "typescript",
+          "port": 3002,
+          "endpoints": [],
+          "path": "services/payments",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "Deployed as compose \"payments\"",
+              "line": 8,
+              "snippet": "PAYMENTS_URL: http://payments:3002"
+            },
+            {
+              "kind": "port",
+              "source": "services/payments/Dockerfile",
+              "detail": "Dockerfile present: runs as a container"
+            },
+            {
+              "kind": "framework",
+              "source": "services/payments/package.json",
+              "detail": "Detected framework express"
+            },
+            {
+              "kind": "manifest",
+              "source": "services/payments/package.json",
+              "detail": "Service root from package.json"
+            },
+            {
+              "kind": "port",
+              "source": "services/payments/src/index.ts",
+              "detail": "Listens on port 3002",
+              "line": 20,
+              "snippet": "app.listen(3002);"
+            }
+          ],
+          "framework": "express"
+        },
+        {
+          "id": "tf:aws_db_instance.main",
+          "name": "shop-db",
+          "type": "database",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "infra",
+          "iac": {
+            "provider": "terraform",
+            "resourceType": "aws_db_instance",
+            "address": "aws_db_instance.main"
+          },
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "compose service \"db\" (image postgres:15)",
+              "line": 13,
+              "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+            },
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_db_instance \"main\"",
+              "line": 70
+            }
+          ],
+          "engine": "postgres",
+          "public": true,
+          "exposure": [
+            {
+              "direction": "ingress",
+              "cidr": "0.0.0.0/0",
+              "port": 5432,
+              "protocol": "tcp",
+              "source": "infra/main.tf",
+              "line": 32
+            },
+            {
+              "direction": "ingress",
+              "cidr": "0.0.0.0/0",
+              "port": null,
+              "source": "infra/main.tf",
+              "line": 70
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PAN",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "payment_methods.card_number holds PAN",
+                  "line": 16,
+                  "snippet": "card_number text"
+                }
+              ]
+            },
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "customers.email holds PII",
+                  "line": 9,
+                  "snippet": "email text NOT NULL,"
+                },
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "customers.phone_number holds PII",
+                  "line": 10,
+                  "snippet": "phone_number text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tf:aws_lb.web",
+          "name": "web",
+          "type": "loadbalancer",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [
+            "listener :443 HTTPS"
+          ],
+          "path": "infra",
+          "iac": {
+            "provider": "terraform",
+            "resourceType": "aws_lb",
+            "address": "aws_lb.web"
+          },
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_lb \"web\"",
+              "line": 44
+            }
+          ],
+          "public": true,
+          "exposure": [
+            {
+              "direction": "ingress",
+              "cidr": "0.0.0.0/0",
+              "port": 443,
+              "protocol": "tcp",
+              "source": "infra/main.tf",
+              "line": 20
+            },
+            {
+              "direction": "ingress",
+              "cidr": "0.0.0.0/0",
+              "port": 443,
+              "source": "infra/main.tf",
+              "line": 44
+            }
+          ]
+        },
+        {
+          "id": "tf:aws_s3_bucket.statements",
+          "name": "acme-statements",
+          "type": "storage",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "infra",
+          "iac": {
+            "provider": "terraform",
+            "resourceType": "aws_s3_bucket",
+            "address": "aws_s3_bucket.statements"
+          },
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_s3_bucket \"statements\"",
+              "line": 78
+            }
+          ],
+          "engine": "s3"
+        },
+        {
+          "id": "tf:aws_vpc.main",
+          "name": "main",
+          "type": "network",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [
+            "subnet private_a (private)",
+            "subnet public_a (public)"
+          ],
+          "path": "infra",
+          "iac": {
+            "provider": "terraform",
+            "resourceType": "aws_vpc",
+            "address": "aws_vpc.main"
+          },
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_vpc \"main\"",
+              "line": 5
+            }
+          ]
+        },
+        {
+          "id": "vendor:aws",
+          "name": "Amazon Web Services",
+          "type": "saas",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "vendor": "aws",
+          "evidence": []
+        },
+        {
+          "id": "vendor:mixpanel",
+          "name": "Mixpanel",
+          "type": "saas",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "vendor": "mixpanel",
+          "evidence": [],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/gateway/src/index.ts",
+                  "detail": "track(...) handles PII for Mixpanel",
+                  "line": 8,
+                  "snippet": "tracker.track(\"orders.list\", { email: req.query.email });"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vendor:segment",
+          "name": "Segment",
+          "type": "saas",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "vendor": "segment",
+          "evidence": [],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/payments/src/index.ts",
+                  "detail": "identify(...) handles PII for Segment",
+                  "line": 16,
+                  "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vendor:stripe",
+          "name": "Stripe",
+          "type": "saas",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "vendor": "stripe",
+          "evidence": [],
+          "dataClasses": [
+            {
+              "class": "PAN",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/payments/src/index.ts",
+                  "detail": "paymentIntents(...) handles PAN for Stripe",
+                  "line": 14,
+                  "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                }
+              ]
+            },
+            {
+              "class": "PII",
+              "certainty": "possible",
+              "evidence": [
+                {
+                  "kind": "sdk-import",
+                  "source": "services/payments",
+                  "detail": "Stripe typically processes PII"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vendor:twilio",
+          "name": "Twilio",
+          "type": "saas",
+          "language": "unknown",
+          "port": null,
+          "endpoints": [],
+          "path": "",
+          "vendor": "twilio",
+          "evidence": [],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/orders/src/index.ts",
+                  "detail": "messages(...) handles PII for Twilio",
+                  "line": 14,
+                  "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                },
+                {
+                  "kind": "call-site",
+                  "source": "services/orders/src/index.ts",
+                  "detail": "messages(...) handles PII for Twilio",
+                  "line": 15,
+                  "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_13c2d639ee70",
+          "from": "internet",
+          "to": "tf:aws_lb.web",
+          "type": "network",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_lb \"web\" is internet-facing",
+              "line": 44
+            }
+          ]
+        },
+        {
+          "id": "e_75877e0d5eff",
+          "from": "service:services/gateway",
+          "to": "service:services/orders",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "ORDERS_URL is set for gateway",
+              "line": 7,
+              "snippet": "ORDERS_URL: http://orders:3001"
+            },
+            {
+              "kind": "env",
+              "source": "services/gateway/src/index.ts",
+              "detail": "Reads ORDERS_URL",
+              "line": 9,
+              "snippet": "const r = await fetch(process.env.ORDERS_URL + \"/orders\");"
+            }
+          ]
+        },
+        {
+          "id": "e_b5390dd50a7d",
+          "from": "service:services/gateway",
+          "to": "service:services/payments",
+          "type": "http",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "PAYMENTS_URL is set for gateway",
+              "line": 8,
+              "snippet": "PAYMENTS_URL: http://payments:3002"
+            }
+          ]
+        },
+        {
+          "id": "e_a169c822b260",
+          "from": "service:services/gateway",
+          "to": "tf:aws_db_instance.main",
+          "type": "database",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_ecs_service \"gateway\" references aws_db_instance.main",
+              "line": 96
+            }
+          ]
+        },
+        {
+          "id": "e_8c9babb8dd5b",
+          "from": "service:services/gateway",
+          "to": "tf:aws_s3_bucket.statements",
+          "type": "storage",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+              "line": 96
+            }
+          ]
+        },
+        {
+          "id": "e_90dc99c3b6fd",
+          "from": "service:services/gateway",
+          "to": "vendor:aws",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_ecs_service \"gateway\" references aws_s3_bucket.statements",
+              "line": 96
+            }
+          ]
+        },
+        {
+          "id": "e_4783b6ab5d3d",
+          "from": "service:services/gateway",
+          "to": "vendor:mixpanel",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "MIXPANEL_TOKEN is set for gateway",
+              "line": 9,
+              "snippet": "MIXPANEL_TOKEN: ***"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/gateway/package.json",
+              "detail": "Declares dependency mixpanel",
+              "line": 8,
+              "snippet": "\"mixpanel\": \"^0.18.0\""
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/gateway/src/index.ts",
+              "detail": "Imports mixpanel (Mixpanel)",
+              "line": 2,
+              "snippet": "import mixpanel from \"mixpanel\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/gateway/src/index.ts",
+              "detail": "Reads MIXPANEL_TOKEN",
+              "line": 4,
+              "snippet": "const tracker = mixpanel.init(process.env.MIXPANEL_TOKEN as string);"
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/gateway/src/index.ts",
+                  "detail": "track(...) handles PII for Mixpanel",
+                  "line": 8,
+                  "snippet": "tracker.track(\"orders.list\", { email: req.query.email });"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e_f1b433131487",
+          "from": "service:services/orders",
+          "to": "queue:kafka",
+          "type": "queue",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "KAFKA_BROKERS is set for orders",
+              "line": 15,
+              "snippet": "KAFKA_BROKERS: kafka:9092"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/orders/package.json",
+              "detail": "Declares dependency kafkajs",
+              "line": 9,
+              "snippet": "\"kafkajs\": \"^2.2.4\","
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/orders/src/index.ts",
+              "detail": "Imports kafkajs (Apache Kafka)",
+              "line": 3,
+              "snippet": "import { Kafka } from \"kafkajs\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/orders/src/index.ts",
+              "detail": "Reads KAFKA_BROKERS",
+              "line": 7,
+              "snippet": "const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] });"
+            }
+          ]
+        },
+        {
+          "id": "e_58fab2799ad6",
+          "from": "service:services/orders",
+          "to": "service:services/payments",
+          "type": "http",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "PAYMENTS_URL is set for orders",
+              "line": 8,
+              "snippet": "PAYMENTS_URL: http://payments:3002"
+            }
+          ]
+        },
+        {
+          "id": "e_2ff9056df5a8",
+          "from": "service:services/orders",
+          "to": "tf:aws_db_instance.main",
+          "type": "database",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "DATABASE_URL is set for orders",
+              "line": 13,
+              "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/orders/package.json",
+              "detail": "Declares dependency pg",
+              "line": 8,
+              "snippet": "\"pg\": \"^8.11.0\","
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/orders/src/index.ts",
+              "detail": "Imports pg (PostgreSQL)",
+              "line": 2,
+              "snippet": "import { Pool } from \"pg\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/orders/src/index.ts",
+              "detail": "Reads DATABASE_URL",
+              "line": 6,
+              "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+            }
+          ]
+        },
+        {
+          "id": "e_ac93b092a28d",
+          "from": "service:services/orders",
+          "to": "vendor:twilio",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "TWILIO_ACCOUNT_SID is set for orders",
+              "line": 16,
+              "snippet": "TWILIO_ACCOUNT_SID: ACplaceholder"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/orders/package.json",
+              "detail": "Declares dependency twilio",
+              "line": 10,
+              "snippet": "\"twilio\": \"^5.0.0\""
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/orders/src/index.ts",
+              "detail": "Imports twilio (Twilio)",
+              "line": 4,
+              "snippet": "import twilio from \"twilio\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/orders/src/index.ts",
+              "detail": "Reads TWILIO_ACCOUNT_SID",
+              "line": 9,
+              "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+            },
+            {
+              "kind": "env",
+              "source": "services/orders/src/index.ts",
+              "detail": "Reads TWILIO_AUTH_TOKEN",
+              "line": 9,
+              "snippet": "const sms = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);"
+            },
+            {
+              "kind": "env",
+              "source": "services/orders/src/index.ts",
+              "detail": "Reads TWILIO_PHONE_NUMBER",
+              "line": 15,
+              "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/orders/src/index.ts",
+                  "detail": "messages(...) handles PII for Twilio",
+                  "line": 14,
+                  "snippet": "await producer.send({ topic: \"orders.created\", messages: [{ value: JSON.stringify(rows[0]) }] });"
+                },
+                {
+                  "kind": "call-site",
+                  "source": "services/orders/src/index.ts",
+                  "detail": "messages(...) handles PII for Twilio",
+                  "line": 15,
+                  "snippet": "await sms.messages.create({ to: req.body.phone, from: process.env.TWILIO_PHONE_NUMBER, body: \"Order received\" });"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e_0401b9f10e6f",
+          "from": "service:services/payments",
+          "to": "queue:kafka",
+          "type": "queue",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "KAFKA_BROKERS is set for payments",
+              "line": 15,
+              "snippet": "KAFKA_BROKERS: kafka:9092"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/payments/package.json",
+              "detail": "Declares dependency kafkajs",
+              "line": 11,
+              "snippet": "\"kafkajs\": \"^2.2.4\""
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/payments/src/index.ts",
+              "detail": "Imports kafkajs (Apache Kafka)",
+              "line": 4,
+              "snippet": "import { Kafka } from \"kafkajs\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/payments/src/index.ts",
+              "detail": "Reads KAFKA_BROKERS",
+              "line": 10,
+              "snippet": "const consumer = new Kafka({ brokers: [process.env.KAFKA_BROKERS as string] }).consumer({ groupId: \"payments\" });"
+            }
+          ]
+        },
+        {
+          "id": "e_de32be2c3514",
+          "from": "service:services/payments",
+          "to": "tf:aws_db_instance.main",
+          "type": "database",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "DATABASE_URL is set for payments",
+              "line": 13,
+              "snippet": "DATABASE_URL: postgres://***@db:5432/orders"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/payments/package.json",
+              "detail": "Declares dependency pg",
+              "line": 8,
+              "snippet": "\"pg\": \"^8.11.0\","
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/payments/src/index.ts",
+              "detail": "Imports pg (PostgreSQL)",
+              "line": 2,
+              "snippet": "import { Pool } from \"pg\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/payments/src/index.ts",
+              "detail": "Reads DATABASE_URL",
+              "line": 9,
+              "snippet": "const pool = new Pool({ connectionString: process.env.DATABASE_URL });"
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PAN",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "payment_methods.card_number holds PAN",
+                  "line": 16,
+                  "snippet": "card_number text"
+                }
+              ]
+            },
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "customers.email holds PII",
+                  "line": 9,
+                  "snippet": "email text NOT NULL,"
+                },
+                {
+                  "kind": "schema",
+                  "source": "services/payments/migrations/001_init.sql",
+                  "detail": "customers.phone_number holds PII",
+                  "line": 10,
+                  "snippet": "phone_number text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e_cb0605dcd52a",
+          "from": "service:services/payments",
+          "to": "vendor:segment",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "SEGMENT_WRITE_KEY is set for payments",
+              "line": 22,
+              "snippet": "SEGMENT_WRITE_KEY: wk_placeholder"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/payments/package.json",
+              "detail": "Declares dependency @segment/analytics-node",
+              "line": 10,
+              "snippet": "\"@segment/analytics-node\": \"^1.1.0\","
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/payments/src/index.ts",
+              "detail": "Imports @segment/analytics-node (Segment)",
+              "line": 5,
+              "snippet": "import { Analytics } from \"@segment/analytics-node\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/payments/src/index.ts",
+              "detail": "Reads SEGMENT_WRITE_KEY",
+              "line": 8,
+              "snippet": "const analytics = new Analytics({ writeKey: process.env.SEGMENT_WRITE_KEY as string });"
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PII",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/payments/src/index.ts",
+                  "detail": "identify(...) handles PII for Segment",
+                  "line": 16,
+                  "snippet": "analytics.identify({ userId: req.body.user, traits: { email: req.body.email } });"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e_b2e80aa760c7",
+          "from": "service:services/payments",
+          "to": "vendor:stripe",
+          "type": "http",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "compose",
+              "source": "docker-compose.yml",
+              "detail": "STRIPE_SECRET_KEY is set for payments",
+              "line": 21,
+              "snippet": "STRIPE_SECRET_KEY: ***"
+            },
+            {
+              "kind": "dependency",
+              "source": "services/payments/package.json",
+              "detail": "Declares dependency stripe",
+              "line": 9,
+              "snippet": "\"stripe\": \"^14.0.0\","
+            },
+            {
+              "kind": "sdk-import",
+              "source": "services/payments/src/index.ts",
+              "detail": "Imports stripe (Stripe)",
+              "line": 3,
+              "snippet": "import Stripe from \"stripe\";"
+            },
+            {
+              "kind": "env",
+              "source": "services/payments/src/index.ts",
+              "detail": "Reads STRIPE_SECRET_KEY",
+              "line": 7,
+              "snippet": "const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);"
+            }
+          ],
+          "dataClasses": [
+            {
+              "class": "PAN",
+              "certainty": "evidenced",
+              "evidence": [
+                {
+                  "kind": "call-site",
+                  "source": "services/payments/src/index.ts",
+                  "detail": "paymentIntents(...) handles PAN for Stripe",
+                  "line": 14,
+                  "snippet": "const intent = await stripe.paymentIntents.create({ amount: req.body.amount, currency: \"usd\" });"
+                }
+              ]
+            },
+            {
+              "class": "PII",
+              "certainty": "possible",
+              "evidence": [
+                {
+                  "kind": "sdk-import",
+                  "source": "services/payments",
+                  "detail": "Stripe typically processes PII"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e_b72361ae240a",
+          "from": "tf:aws_lb.web",
+          "to": "service:services/gateway",
+          "type": "network",
+          "confidence": "high",
+          "evidence": [
+            {
+              "kind": "terraform",
+              "source": "infra/main.tf",
+              "detail": "aws_lb.web forwards to aws_ecs_service.gateway",
+              "line": 96
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "vendorMeta": [
+    {
+      "vendorId": "stripe",
+      "purpose": "Card payments and refunds",
+      "region": "US",
+      "dpaOnFile": true
+    },
+    {
+      "vendorId": "segment",
+      "purpose": "Product analytics",
+      "region": "US",
+      "dpaOnFile": true
+    },
+    {
+      "vendorId": "twilio",
+      "purpose": "Order SMS notifications",
+      "region": "US",
+      "dpaOnFile": false
+    }
+  ],
+  "policy": "version: 1\non_drift: failure\nscopes:\n  - name: PCI cardholder data environment\n    nodes: [\"service:services/payments\", \"db:postgres\"]\n"
+}

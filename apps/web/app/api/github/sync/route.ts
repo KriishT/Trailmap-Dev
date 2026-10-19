@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient, supabaseAdmin } from "@/lib/supabase-server";
 import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
+import { isLocalMode } from "@/lib/local-mode";
+import { LOCAL_GITHUB_REPOS } from "@/lib/local-github";
 
 interface GitHubRepoSummary {
   id: number;
@@ -89,6 +91,17 @@ async function getAuthenticatedContext() {
   }
 
   const db = supabaseAdmin();
+
+  if (isLocalMode()) {
+    // Mocked GitHub: the installation is whatever "Install GitHub App" created for this user.
+    const { data: localOrg } = await db.from("organizations").select("id, github_org_name").eq("owner_user_id", user.id).maybeSingle();
+    if (!localOrg) {
+      return { error: NextResponse.json({ error: "No installation found. Install the Trailmap GitHub App first." }, { status: 404 }) };
+    }
+    const repos: GitHubRepoSummary[] = LOCAL_GITHUB_REPOS.map((r) => ({ id: r.id, name: r.name, full_name: r.full_name, private: r.private, default_branch: r.default_branch }));
+    return { db, org: { id: localOrg.id as string }, repos, githubUsername: localOrg.github_org_name as string };
+  }
+
   const appId = process.env.GITHUB_APP_ID!;
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY!.replace(/\\n/g, "\n");
   const githubUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username;
