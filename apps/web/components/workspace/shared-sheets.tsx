@@ -18,7 +18,7 @@ export function SharedSheets({ sheets, rows, label }: { sheets: SharedSheet[]; r
       {sheets.map((s) => (
         <TabPanel key={s.id} id={s.id} active={tab} idPrefix="shared">
           <div className="sheet-frame">
-            <div className="sheet-scroll">
+            <div className="sheet-scroll" tabIndex={0} role="region" aria-label={`${s.title} sheet, scrollable`}>
               <div className="theme-light-only" dangerouslySetInnerHTML={{ __html: s.svg.light }} />
               <div className="theme-dark-only" dangerouslySetInnerHTML={{ __html: s.svg.dark }} />
             </div>

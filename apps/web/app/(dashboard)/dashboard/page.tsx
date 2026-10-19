@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   }
 
   const steps: Step[] = [
-    { title: "Install the GitHub App", body: "Read-only access to code, plus permission to post the pull request check.", done: (orgs ?? []).some((o) => o.github_installation_id), action: <ConnectGitHubButton variant="primary" /> },
+    { title: "Install the GitHub App", body: "Read-only access to code, plus permission to post the pull request check.", done: (orgs ?? []).some((o) => o.github_installation_id), action: <ConnectGitHubButton variant="primary" local={local} /> },
     { title: "Choose repositories", body: "Only the ones you pick are read.", done: list.length > 0, action: <SyncReposButton variant="primary" /> },
     { title: "Run the first scan", body: "Takes about a minute. The code is cloned to a temporary folder and deleted afterwards; only the graph is kept.", done: Boolean(scanned), action: first ? <ScanButton repoId={first.id} local={local} label="Run first scan" variant="primary" /> : undefined },
     { title: "Pick a framework", body: "PCI DSS, SOC 2 or DORA decides which requirement notes your export carries.", done: framework, action: scanned ? <Link className="btn" href={`/repos/${scanned.id}?tab=settings`}>Choose framework</Link> : undefined },
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         </div>
         <div className="row">
           <SyncReposButton label="Choose repositories" />
-          <ConnectGitHubButton label="GitHub App settings" />
+          <ConnectGitHubButton label="GitHub App settings" local={local} />
         </div>
       </div>
 

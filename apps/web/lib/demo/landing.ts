@@ -13,7 +13,7 @@ let cached: ReturnType<typeof compute> | null = null;
 
 async function compute() {
   const data = demoWorkspace();
-  const sheet = await renderSheet(data, { sheet: "system" });
+  const sheet = await renderSheet(data, { sheet: "system", interactive: false });
   const rows = buildVendorInventory(data.effective, data.catalog.length ? data.catalog : VENDORS.map((v) => ({ id: v.id, name: v.name, category: v.category, website: v.website })), data.vendorMeta);
   const cite = (r: (typeof rows)[number]) => {
     const e = r.evidence.find((x) => x.line) ?? r.evidence[0];

@@ -107,7 +107,11 @@ function renderNode(node: SceneNode, t: Theme, interactive: boolean): string {
   const attrs = interactive
     ? ` data-node-id="${esc(node.id)}" tabindex="0" role="button" aria-label="${esc(describeNode(node))}"`
     : "";
-  return `<g class="node"${attrs}>${nodeShape(node, t)}<text x="${n(cx)}" y="${n(node.y + 21)}" font-family="${SANS}" font-size="13" font-weight="600" fill="${textColor}">${esc(label)}</text><text x="${n(cx)}" y="${n(node.y + 36)}" font-family="${COND}" font-size="9.5" letter-spacing="0.9" fill="${node.highlighted ? t.ink : t.ink2}">${esc(node.sublabel)}</text>${pub}${stamps.join("")}</g>`;
+  const texts = `<text x="${n(cx)}" y="${n(node.y + 21)}" font-family="${SANS}" font-size="13" font-weight="600" fill="${textColor}">${esc(label)}</text><text x="${n(cx)}" y="${n(node.y + 36)}" font-family="${COND}" font-size="9.5" letter-spacing="0.9" fill="${node.highlighted ? t.ink : t.ink2}">${esc(node.sublabel)}</text>${pub}${stamps.join("")}`;
+  if (!interactive) return `<g class="node">${nodeShape(node, t)}${texts}</g>`;
+  // The focusable element is the shape; its aria-label carries the name. The drawn text sits beside it,
+  // hidden from assistive technology and transparent to clicks, so it is never read twice.
+  return `<g class="node-wrap"><g class="node"${attrs}>${nodeShape(node, t)}</g><g class="node-text" aria-hidden="true" pointer-events="none">${texts}</g></g>`;
 }
 
 function midpoint(points: Point[]): Point {
@@ -182,10 +186,15 @@ function renderEdge(edge: SceneEdge, t: Theme, names: Map<string, string>, inter
   const from = names.get(edge.from) ?? edge.from;
   const to = names.get(edge.to) ?? edge.to;
   const label = `${edge.type} connection from ${from} to ${to}, ${edge.confidence} confidence${edge.evidenced.length ? `, carries ${edge.evidenced.join(", ")}` : ""}${edge.crossesScope ? ", crosses a scope boundary" : ""}${edge.highlighted ? ", new or changed" : ""}`;
-  const attrs = interactive ? ` data-edge-id="${esc(edge.id)}" tabindex="0" role="button" aria-label="${esc(label)}"` : "";
+  // The stamps drawn on the line are part of its name, so what a sighted reader sees is what a screen reader hears.
+  const stamps = tags.map((tg) => tg.label).join(" ");
+  const full = `${edge.cite ? `${label}. Evidence: ${edge.cite}` : label}${stamps ? `. Stamps: ${stamps}` : ""}`;
+  const attrs = interactive ? ` data-edge-id="${esc(edge.id)}" tabindex="0" role="button" aria-label="${esc(full)}"` : "";
   const hit = interactive ? `<path d="${d}" fill="none" stroke="transparent" stroke-width="12"/>` : "";
-  const title = edge.cite ? `<title>${esc(`${label}. Evidence: ${edge.cite}`)}</title>` : "";
-  return `<g class="edge"${attrs}>${title}${under}${hit}${line}${tagSvgs}</g>`;
+  const title = edge.cite ? `<title>${esc(full)}</title>` : "";
+  if (!interactive) return `<g class="edge"${attrs}>${title}${under}${hit}${line}${tagSvgs}</g>`;
+  // Stamps sit beside the focusable line, not inside it: they are drawn text, and the line's name already lists them.
+  return `<g class="edge-wrap"><g class="edge"${attrs}>${title}${under}${hit}${line}</g><g class="edge-tags" aria-hidden="true" pointer-events="none">${tagSvgs}</g></g>`;
 }
 
 function legendSvg(t: Theme, x: number, y: number): string {
@@ -269,7 +278,7 @@ export function sceneToSvg(scene: Scene, opts: SvgOptions = {}): string {
   const title = `${scene.title}${opts.titleBlock ? `: ${opts.titleBlock.repo}` : ""}`;
   const idp = opts.idPrefix ?? "";
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="${idp}t ${idp}d"${opts.theme ? ` data-theme="${t.name}"` : ""}>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="${interactive ? "group" : "img"}" aria-labelledby="${idp}t ${idp}d"${opts.theme ? ` data-theme="${t.name}"` : ""}>` +
     `<title id="${idp}t">${esc(title)}</title>` +
     `<desc id="${idp}d">${esc(`${scene.nodes.length} elements and ${scene.edges.length} connections. ${scene.emptyReason ?? ""}`.trim())}</desc>` +
     parts.join("") +

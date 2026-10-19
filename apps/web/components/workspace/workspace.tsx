@@ -116,7 +116,7 @@ export function Workspace({ data, initialTab }: { data: ClientWorkspace; initial
             <Select label="Revision" value={data.selectedId} onChange={(e) => openRevision(e.target.value)}>
               {[...data.revisions].reverse().map((r) => <option key={r.id} value={r.id}>{r.label}, {fmtDate(r.scannedAt)}</option>)}
             </Select>
-            <Button size="small" variant="quiet" onClick={() => setPaletteOpen(true)} aria-label="Open command palette">Search <kbd>Ctrl K</kbd></Button>
+            <Button size="small" variant="quiet" onClick={() => setPaletteOpen(true)}>Search <kbd>Ctrl K</kbd></Button>
             <ThemeToggle />
           </div>
         </div>

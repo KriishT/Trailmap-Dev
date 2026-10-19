@@ -7,6 +7,8 @@ export interface SceneRequest {
   dataClass?: DataClass;
   minConfidence?: Confidence;
   showLibraries?: boolean;
+  /** Draw focusable boxes and lines for the workspace. Static pages (landing, shared view) leave this off. */
+  interactive?: boolean;
   /** Replaces the saved scopes, so an edit in progress can be previewed before it is saved. */
   scopes?: Array<{ id: string; name: string; nodeIds: string[] }>;
 }
@@ -61,7 +63,7 @@ export async function renderSheet(data: Pick<WorkspaceData, "effective" | "scope
     highlightNodeIds: data.highlightNodeIds,
     highlightEdgeIds: data.highlightEdgeIds,
   });
-  const draw = (theme: typeof LIGHT) => sceneToSvg(scene, { theme, interactive: true, legend: true, idPrefix: `${theme.name}-` });
+  const draw = (theme: typeof LIGHT) => sceneToSvg(scene, { theme, interactive: req.interactive !== false, legend: true, idPrefix: `${theme.name}-` });
   return {
     svg: { light: draw(LIGHT), dark: draw(DARK) },
     width: scene.width,

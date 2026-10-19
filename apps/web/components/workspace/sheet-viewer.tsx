@@ -85,8 +85,10 @@ export function SheetViewer({ endpoint, request, index, selection, onSelect, sco
     setError(null);
     fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request), signal: ctrl.signal })
       .then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body.error ?? `The sheet could not be drawn (${res.status})`);
+        const body = await res.json().catch(() => null);
+        // A newer request replaced this one while the body was arriving: drop it rather than draw stale or empty data.
+        if (ctrl.signal.aborted) return;
+        if (!res.ok || !body?.svg) throw new Error(body?.error ?? `The sheet could not be drawn (${res.status})`);
         cache.current.set(key, body as SceneResponse);
         setScene(body as SceneResponse);
       })

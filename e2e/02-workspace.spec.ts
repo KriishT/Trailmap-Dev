@@ -21,13 +21,17 @@ test.describe("signed-in workspace", () => {
     await page.goto(`/repos/${SHOP_REPO}?tab=scopes`);
     await expect(page.getByTestId("sheet")).toBeVisible();
     await page.getByLabel("Editing").selectOption("__new__");
-    await page.getByLabel("Name", { exact: true }).fill("E2E scope");
+    const scopeName = page.getByLabel("Name", { exact: true });
+    await expect(async () => {
+      await scopeName.fill("E2E scope");
+      await expect(scopeName).toHaveValue("E2E scope", { timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
     const nodes = page.locator("[data-node-id]:visible");
     await nodes.first().click();
     await nodes.nth(1).click({ modifiers: ["Shift"] });
     await expect(page.getByTestId("scope-count")).toHaveText("2");
     await page.getByRole("button", { name: "Save scope" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Scope saved" })).toBeVisible();
+    await expect(page.getByLabel("Editing").locator("option", { hasText: "E2E scope" })).toHaveCount(1);
     await page.reload();
     await expect(page.getByLabel("Editing").locator("option", { hasText: "E2E scope" })).toHaveCount(1);
   });

@@ -77,7 +77,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
   const { view } = access;
   const input = { effective: graph, scopes: [], highlightNodeIds: [], highlightEdgeIds: [] };
   const kinds = (["system", "data-flow", "network"] as const).filter((k) => k !== "network" || graph.nodes.some((n) => n.iac || n.type === "network" || n.type === "loadbalancer"));
-  const sheets = await Promise.all(kinds.map(async (k) => ({ id: k, title: SHEET_TITLES[k], svg: (await renderSheet(input, { sheet: k })).svg })));
+  const sheets = await Promise.all(kinds.map(async (k) => ({ id: k, title: SHEET_TITLES[k], svg: (await renderSheet(input, { sheet: k, interactive: false })).svg })));
 
   return (
     <Shell>

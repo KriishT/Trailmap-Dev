@@ -29,13 +29,12 @@ export function ThemeToggle() {
     <Button
       size="small"
       variant="quiet"
-      aria-label={`Switch to ${next} theme`}
       onClick={() => {
         setTheme(next);
         set(next);
       }}
     >
-      {theme === "dark" ? "Paper" : "Blueprint"}
+      Switch to {next === "dark" ? "blueprint" : "paper"}
     </Button>
   );
 }

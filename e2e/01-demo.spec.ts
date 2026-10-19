@@ -5,6 +5,7 @@ import { pdfText } from "./helpers";
 test.describe("sample workspace (no sign-in)", () => {
   test.beforeEach(({ page }) => {
     page.on("pageerror", (e) => console.log("PAGEERROR", e.message.slice(0, 500)));
+    page.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE_ERROR", m.text().slice(0, 700)); });
   });
 
   test("landing leads to the sample, which shows sheets with evidence", async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe("sample workspace (no sign-in)", () => {
     expect(Number(await sheet.getAttribute("data-node-count"))).toBeGreaterThan(5);
 
     // select a box: the inspector explains it and shows the code behind it
-    await page.locator("[data-node-id]:visible", { hasText: "payments" }).first().click();
+    await page.locator('[data-node-id][aria-label^="payments"]:visible').first().click();
     const inspector = page.getByTestId("inspector");
     await expect(inspector.getByRole("heading", { name: "payments", level: 3 })).toBeVisible();
     await expect(inspector.getByRole("list", { name: "Evidence" })).toBeVisible();
@@ -64,7 +65,7 @@ test.describe("sample workspace (no sign-in)", () => {
     await expect(page.getByTestId("sheet")).toBeVisible();
     const count = page.getByTestId("scope-count");
     const before = Number(await count.textContent());
-    const target = page.locator("[data-node-id]:visible", { hasText: "orders" }).first();
+    const target = page.locator('[data-node-id][aria-label^="orders"]:visible').first();
     await target.click();
     await expect(count).toHaveText(String(before + 1));
     await target.click();
@@ -111,7 +112,7 @@ test.describe("sample workspace (no sign-in)", () => {
 
   test("theme toggle switches to blueprint and the choice sticks", async ({ page }) => {
     await page.goto("/demo");
-    await page.getByRole("banner").getByRole("button", { name: /Switch to dark theme/ }).click();
+    await page.getByRole("banner").getByRole("button", { name: /Switch to blueprint/ }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
