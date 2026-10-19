@@ -1,54 +1,9 @@
-import { PGlite } from "@electric-sql/pglite";
-import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { createLocalDb, type LocalDb, type Role } from "../../packages/localdb/src/db";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.join(here, "..", "migrations");
+export type { Role };
+export type TestDb = LocalDb;
 
-export type Role = "anon" | "authenticated" | "service_role";
-
-export interface TestDb {
-  pg: PGlite;
-  /** Run SQL as a Supabase role. `userId` sets auth.uid() for the transaction. */
-  as<T = Record<string, unknown>>(
-    role: Role,
-    userId: string | null,
-    sql: string,
-    params?: unknown[]
-  ): Promise<T[]>;
-  /** Run SQL as the superuser (setup only). */
-  admin<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
-}
-
-export async function createTestDb(): Promise<TestDb> {
-  const pg = await PGlite.create({ extensions: { uuid_ossp } });
-  await pg.exec(fs.readFileSync(path.join(here, "auth-shim.sql"), "utf8"));
-  const files = fs
-    .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-  for (const file of files) {
-    await pg.exec(fs.readFileSync(path.join(migrationsDir, file), "utf8"));
-  }
-
-  return {
-    pg,
-    async admin(sql, params) {
-      const res = await pg.query(sql, params);
-      return res.rows as never;
-    },
-    async as(role, userId, sql, params) {
-      return pg.transaction(async (tx) => {
-        await tx.exec(`SET LOCAL ROLE ${role}`);
-        await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [userId ?? ""]);
-        const res = await tx.query(sql, params);
-        return res.rows as never;
-      });
-    },
-  };
-}
+export const createTestDb = () => createLocalDb();
 
 export const ids = {
   userA: "00000000-0000-0000-0000-00000000000a",

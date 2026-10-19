@@ -1,0 +1,31 @@
+{
+  "name": "@trailmap/localdb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Embedded Postgres (pglite) running the real migrations, with a Supabase-compatible client. For tests and local mode.",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.10"
+  },
+  "devDependencies": {
+    "@trailmap/eslint-config": "*",
+    "@trailmap/typescript-config": "*",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.2"
+  }
+}

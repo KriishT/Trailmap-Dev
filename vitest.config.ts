@@ -13,6 +13,8 @@ export default defineConfig({
       "@trailmap/cli": path.resolve(__dirname, "packages/cli/src/index.ts"),
       "@trailmap/sheets": path.resolve(__dirname, "packages/sheets/src/index.ts"),
       "@trailmap/integrations": path.resolve(__dirname, "packages/integrations/src/index.ts"),
+      "@trailmap/localdb": path.resolve(__dirname, "packages/localdb/src/index.ts"),
+      "@trailmap/localdb": path.resolve(__dirname, "packages/localdb/src/index.ts"),
     },
   },
   test: {
