@@ -14,7 +14,6 @@ export default defineConfig({
       "@trailmap/sheets": path.resolve(__dirname, "packages/sheets/src/index.ts"),
       "@trailmap/integrations": path.resolve(__dirname, "packages/integrations/src/index.ts"),
       "@trailmap/localdb": path.resolve(__dirname, "packages/localdb/src/index.ts"),
-      "@trailmap/localdb": path.resolve(__dirname, "packages/localdb/src/index.ts"),
     },
   },
   test: {
@@ -32,7 +31,9 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text-summary", "json-summary"],
       include: ["packages/scanner/src/**", "packages/pipeline/src/**", "packages/graph/src/**", "apps/web/lib/**"],
-      exclude: ["**/*.test.ts", "**/*.d.ts", "**/index.ts", "**/types.ts", "**/scanner-port.ts"],
+      // Excluded: thin adapters to things that only exist at runtime. The Octokit wrapper needs a real GitHub App;
+      // the local-mode database and mocked GitHub are exercised end to end by the Playwright suite (e2e/).
+      exclude: ["**/*.test.ts", "**/*.d.ts", "**/index.ts", "**/types.ts", "**/scanner-port.ts", "apps/web/lib/github-api.ts", "apps/web/lib/local-db.ts", "apps/web/lib/local-github.ts"],
       thresholds: {
         "packages/scanner/src/**": { lines: 80, statements: 80, functions: 80, branches: 70 },
         "packages/pipeline/src/**": { lines: 80, statements: 80, functions: 80, branches: 70 },
