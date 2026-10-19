@@ -23,7 +23,7 @@ export default defineConfig({
     acceptDownloads: true,
   },
   projects: [
-    { name: "desktop", testIgnore: /responsive/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "tablet", testMatch: /responsive|a11y/, use: { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 } } },
   ],
   webServer: process.env.E2E_NO_SERVER

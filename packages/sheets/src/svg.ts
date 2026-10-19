@@ -90,7 +90,8 @@ function describeNode(node: SceneNode): string {
 }
 
 function renderNode(node: SceneNode, t: Theme, interactive: boolean): string {
-  const textColor = t.ink;
+  // Highlighted boxes are filled with the highlighter colour in both themes, so their text is always dark.
+  const textColor = node.highlighted ? "#15171B" : t.ink;
   const cx = node.x + 12;
   const label = node.label.length > 30 ? node.label.slice(0, 29) + "…" : node.label;
   const stamps: string[] = [];
@@ -107,7 +108,7 @@ function renderNode(node: SceneNode, t: Theme, interactive: boolean): string {
   const attrs = interactive
     ? ` data-node-id="${esc(node.id)}" tabindex="0" role="button" aria-label="${esc(describeNode(node))}"`
     : "";
-  const texts = `<text x="${n(cx)}" y="${n(node.y + 21)}" font-family="${SANS}" font-size="13" font-weight="600" fill="${textColor}">${esc(label)}</text><text x="${n(cx)}" y="${n(node.y + 36)}" font-family="${COND}" font-size="9.5" letter-spacing="0.9" fill="${node.highlighted ? t.ink : t.ink2}">${esc(node.sublabel)}</text>${pub}${stamps.join("")}`;
+  const texts = `<text x="${n(cx)}" y="${n(node.y + 21)}" font-family="${SANS}" font-size="13" font-weight="600" fill="${textColor}">${esc(label)}</text><text x="${n(cx)}" y="${n(node.y + 36)}" font-family="${COND}" font-size="9.5" letter-spacing="0.9" fill="${node.highlighted ? "#15171B" : t.ink2}">${esc(node.sublabel)}</text>${pub}${stamps.join("")}`;
   if (!interactive) return `<g class="node">${nodeShape(node, t)}${texts}</g>`;
   // The focusable element is the shape; its aria-label carries the name. The drawn text sits beside it,
   // hidden from assistive technology and transparent to clicks, so it is never read twice.

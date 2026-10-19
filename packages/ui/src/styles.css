@@ -160,7 +160,7 @@ hr, .rule { border: 0; border-top: 1px solid var(--rule); margin: 0; }
 .hl { background: var(--attention); color: var(--attention-ink); padding: 0 3px; }
 
 /* Tables */
-.table-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper-raised); }
+.table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--rule); background: var(--paper-raised); }
 .tbl { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
 .tbl caption { text-align: left; padding: 8px 12px; font-family: var(--font-cond); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 .tbl th { text-align: left; font-family: var(--font-cond); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.75rem; color: var(--ink-2); padding: 8px 12px; border-bottom: 1px solid var(--ink); white-space: nowrap; }

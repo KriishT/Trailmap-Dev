@@ -13,6 +13,7 @@
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .page-head p { color: var(--ink-2); margin-top: 4px; }
 .stack { display: grid; gap: 16px; }
+.stack > *, .ws-body > *, .grid-2 > * { min-width: 0; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .grid-2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
