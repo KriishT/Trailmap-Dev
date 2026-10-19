@@ -9,9 +9,13 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@vitest/coverage-v8": "^5.0.5",
+    "msw": "^3.0.3",
     "prettier": "^3.7.4",
     "turbo": "^2.9.6",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^5.0.5"
   },
   "engines": {
     "node": ">=18"

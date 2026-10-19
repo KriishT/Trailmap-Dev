@@ -1,34 +1,43 @@
-﻿import { NextResponse } from "next/server";
-import { createSupabaseServerClient, supabaseAdmin } from "@/lib/supabase-server";
+import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { requireUser, isUuid } from "@/lib/authz";
 
 export async function POST(req: Request) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
 
-  const { snapshotId } = await req.json();
-  if (!snapshotId) return NextResponse.json({ error: "snapshotId required" }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
+  const snapshotId = body?.snapshotId;
+  if (typeof snapshotId !== "string" || !isUuid(snapshotId)) {
+    return NextResponse.json({ error: "snapshotId required" }, { status: 400 });
+  }
 
-  const db = supabaseAdmin();
+  // Both lookups run as the user, so row-level security limits them to their own orgs.
+  const { data: snapshot } = await supabase
+    .from("graph_snapshots")
+    .select("id")
+    .eq("id", snapshotId)
+    .maybeSingle();
+  if (!snapshot) return NextResponse.json({ error: "Snapshot not found" }, { status: 404 });
 
-  const { data: existing } = await db
+  const { data: existing } = await supabase
     .from("shared_maps")
     .select("slug")
     .eq("snapshot_id", snapshotId)
     .eq("created_by", user.id)
-    .single();
-
+    .maybeSingle();
   if (existing) return NextResponse.json({ slug: existing.slug });
 
   const slug = nanoid(10);
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from("shared_maps")
     .insert({ snapshot_id: snapshotId, slug, created_by: user.id })
     .select("slug")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !data) {
+    return NextResponse.json({ error: error?.message ?? "Failed to share" }, { status: 500 });
+  }
   return NextResponse.json({ slug: data.slug });
 }
-

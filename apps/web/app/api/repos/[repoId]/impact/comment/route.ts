@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireRepoAccess } from "@/lib/authz";
 import { buildPrImpactComment, computePrImpactForRepo, upsertPrImpactComment } from "@/lib/github-pr-impact";
 
 export async function POST(
@@ -8,11 +8,8 @@ export async function POST(
 ) {
   const { repoId } = await params;
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireRepoAccess(repoId);
+  if (!access.ok) return access.response;
 
   const body = await parseBody(req);
   const prNumber = Number(body.prNumber);

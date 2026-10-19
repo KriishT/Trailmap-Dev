@@ -1,6 +1,7 @@
-﻿import { NextResponse } from "next/server";
-import { createSupabaseServerClient, supabaseAdmin } from "@/lib/supabase-server";
-import { scanRepo } from "@/lib/scan";
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-server";
+import { requireRepoAccess } from "@/lib/authz";
+import { enqueueScan } from "@/lib/queue";
 
 export async function POST(
   _req: Request,
@@ -8,23 +9,9 @@ export async function POST(
 ) {
   const { repoId } = await params;
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireRepoAccess(repoId);
+  if (!access.ok) return access.response;
 
-  const db = supabaseAdmin();
-  const { data: repo } = await db.from("repos").select("id").eq("id", repoId).single();
-  if (!repo) return NextResponse.json({ error: "Repo not found" }, { status: 404 });
-
-  const { data: log } = await db
-    .from("scan_logs")
-    .insert({ repo_id: repoId, triggered_by: "manual", status: "pending" })
-    .select("id")
-    .single();
-
-  if (log) {
-    scanRepo(repoId, log.id).catch(console.error);
-  }
-
-  return NextResponse.json({ ok: true, scanLogId: log?.id });
+  const { scanLogId, alreadyQueued } = await enqueueScan(supabaseAdmin(), repoId, "manual");
+  return NextResponse.json({ ok: true, scanLogId, alreadyQueued });
 }

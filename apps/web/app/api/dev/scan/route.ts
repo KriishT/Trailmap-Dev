@@ -1,11 +1,15 @@
 import { scan } from "@trailmap/scanner";
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/authz";
 
 // Dev-only endpoint — scans a local path and returns the graph JSON
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ error: "Not available in production" }, { status: 403 });
   }
+
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
 
   const { rootDir } = await req.json();
   if (!rootDir || typeof rootDir !== "string") {

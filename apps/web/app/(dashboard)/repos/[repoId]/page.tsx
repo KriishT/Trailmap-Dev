@@ -1,6 +1,6 @@
-﻿import { notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase-server";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ShareButton } from "@/components/map/share-button";
 import { RepoWorkspace } from "@/components/map/repo-workspace";
 import { ArrowLeft } from "lucide-react";
@@ -8,7 +8,8 @@ import { selectDiffBaseline, type ComparableSnapshot } from "@/lib/graph-diff";
 
 export default async function RepoMapPage({ params }: { params: Promise<{ repoId: string }> }) {
   const { repoId } = await params;
-  const db = supabaseAdmin();
+  // User-scoped client: row-level security limits this to repos in the user's orgs.
+  const db = await createSupabaseServerClient();
 
   const { data: repo } = await db
     .from("repos")

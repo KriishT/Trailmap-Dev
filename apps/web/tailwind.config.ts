@@ -1,5 +1,5 @@
 import tailwindcssAnimate from "tailwindcss-animate";
-﻿import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],

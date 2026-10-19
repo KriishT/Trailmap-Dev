@@ -1,36 +1,25 @@
 import { notFound } from "next/navigation";
-import { supabaseAdmin } from "@/lib/supabase-server";
+import { supabasePublic } from "@/lib/supabase-public";
 import { MapView } from "@/components/map/map-view";
 
 export default async function PublicMapPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const db = supabaseAdmin();
 
-  const { data: sharedMap } = await db
-    .from("shared_maps")
-    .select("id, snapshot_id, expires_at")
-    .eq("slug", slug)
-    .single();
+  // Anonymous resolver: returns one row for a live slug, nothing for unknown or expired ones.
+  const { data } = await supabasePublic().rpc("get_shared_map", { p_slug: slug });
+  const shared = Array.isArray(data) ? data[0] : null;
+  if (!shared) notFound();
 
-  if (!sharedMap) notFound();
-
-  if (sharedMap.expires_at && new Date(sharedMap.expires_at) < new Date()) {
+  if (shared.requires_password) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
-        This map link has expired.
+      <div className="min-h-screen flex items-center justify-center text-sm">
+        This map is password protected. Password entry is not available yet.
       </div>
     );
   }
 
-  const { data: snapshot } = await db
-    .from("graph_snapshots")
-    .select("raw_json, node_count, edge_count, scanned_at, repos(full_name)")
-    .eq("id", sharedMap.snapshot_id)
-    .single();
-
-  if (!snapshot) notFound();
-
-  const repoName = (snapshot.repos as any)?.full_name ?? "Unknown repo";
+  const snapshot = shared;
+  const repoName = shared.repo_full_name ?? "Unknown repo";
 
   return (
     <div className="min-h-screen flex flex-col">

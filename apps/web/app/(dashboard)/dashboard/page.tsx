@@ -1,4 +1,4 @@
-﻿import { createSupabaseServerClient, supabaseAdmin } from "@/lib/supabase-server";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { RepoList } from "@/components/dashboard/repo-list";
 import { ConnectGitHubButton } from "@/components/dashboard/connect-github-button";
 import { SyncReposButton } from "@/components/dashboard/sync-repos-button";
@@ -6,7 +6,7 @@ import { SyncReposButton } from "@/components/dashboard/sync-repos-button";
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const db = supabaseAdmin();
+  const db = supabase;
 
   const { data: orgs } = await db
     .from("organizations")

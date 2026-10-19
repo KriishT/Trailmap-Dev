@@ -1,20 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
-const PUBLIC_ROUTES = ["/", "/sign-in", "/sign-up", "/auth/callback", "/map/"];
+import { isPublic } from "@/lib/public-routes";
 
 type CookieMutation = {
   name: string;
   value: string;
   options?: Record<string, unknown>;
 };
-
-function isPublic(pathname: string) {
-  return (
-    PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route)) ||
-    pathname.startsWith("/api/webhooks/")
-  );
-}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -41,6 +33,9 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isPublic(request.nextUrl.pathname)) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     return NextResponse.redirect(url);
