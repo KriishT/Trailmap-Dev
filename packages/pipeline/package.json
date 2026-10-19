@@ -27,7 +27,7 @@
     "@supabase/supabase-js": "^2.49.4",
     "@trailmap/graph": "*",
     "@trailmap/scanner": "*",
-    "simple-git": "^3.27.0"
+    "simple-git": "^4.0.2"
   },
   "devDependencies": {
     "@trailmap/eslint-config": "*",
