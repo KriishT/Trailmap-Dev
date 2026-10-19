@@ -1,5 +1,5 @@
-const PUBLIC_EXACT = ["/", "/sign-in", "/sign-up", "/auth/callback"];
-const PUBLIC_PREFIXES = ["/map/", "/api/webhooks/"];
+const PUBLIC_EXACT = ["/", "/sign-in", "/sign-up", "/auth/callback", "/demo"];
+const PUBLIC_PREFIXES = ["/map/", "/api/webhooks/", "/api/demo/", "/demo/"];
 
 /** Paths reachable without a session. Everything else requires sign-in. */
 export function isPublic(pathname: string): boolean {

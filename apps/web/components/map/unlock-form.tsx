@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Input } from "@trailmap/ui";
 import { errorMessage } from "@/lib/errors";
 
 export function UnlockForm({ slug }: { slug: string }) {
@@ -31,21 +32,9 @@ export function UnlockForm({ slug }: { slug: string }) {
   }
 
   return (
-    <form onSubmit={submit} style={{ display: "grid", gap: 12, width: "min(360px, 100%)" }}>
-      <label htmlFor="share-password" style={{ fontWeight: 600 }}>Password</label>
-      <input
-        id="share-password"
-        type="password"
-        autoComplete="off"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        style={{ padding: "10px 12px", border: "1px solid #888", borderRadius: 2, font: "inherit" }}
-      />
-      {error && <p role="alert" style={{ color: "#b3261e", margin: 0 }}>{error}</p>}
-      <button type="submit" disabled={busy} style={{ padding: "10px 12px", border: 0, borderRadius: 2, background: "#15171B", color: "#fff", font: "inherit", cursor: "pointer" }}>
-        {busy ? "Checking..." : "Open"}
-      </button>
+    <form onSubmit={submit} className="stack">
+      <Input label="Password" type="password" autoComplete="off" required value={password} onChange={(e) => setPassword(e.target.value)} error={error} />
+      <div><Button type="submit" variant="primary" disabled={busy}>{busy ? "Checking" : "Open"}</Button></div>
     </form>
   );
 }

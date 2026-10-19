@@ -1,81 +1,113 @@
+import Link from "next/link";
+import { Stamp } from "@trailmap/ui";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { isLocalMode } from "@/lib/local-mode";
 import { RepoList, type RepoSummary } from "@/components/dashboard/repo-list";
 import { ConnectGitHubButton } from "@/components/dashboard/connect-github-button";
 import { SyncReposButton } from "@/components/dashboard/sync-repos-button";
+import { ScanButton } from "@/components/dashboard/scan-button";
+
+export const metadata = { title: "Repositories" };
+
+interface Step {
+  title: string;
+  body: string;
+  done: boolean;
+  action?: React.ReactNode;
+}
 
 export default async function DashboardPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const db = supabase;
+  const db = await createSupabaseServerClient();
+  const local = isLocalMode();
 
-  const { data: orgs } = await db
-    .from("organizations")
-    .select("id, github_org_name, github_installation_id")
-    .eq("owner_user_id", user!.id);
-
-  const { data: repos } = orgs?.length
+  // Row-level security limits every query below to organisations the person belongs to.
+  const { data: orgs } = await db.from("organizations").select("id, github_org_name, github_installation_id");
+  const orgIds = (orgs ?? []).map((o) => o.id as string);
+  const { data: repoRows } = orgIds.length
     ? await db
         .from("repos")
-        .select(`id, name, full_name, last_scanned_at, private, is_active,
-          graph_snapshots (id, node_count, edge_count, scanned_at)`)
-        .in("org_id", orgs.map((o) => o.id))
+        .select("id, name, full_name, last_scanned_at, private, is_active")
+        .in("org_id", orgIds)
         .eq("is_active", true)
-        .order("scanned_at", { ascending: false, foreignTable: "graph_snapshots" })
-        .limit(1, { foreignTable: "graph_snapshots" })
         .order("last_scanned_at", { ascending: false })
     : { data: [] };
+  const { data: snapRows } = repoRows?.length
+    ? await db.from("graph_snapshots").select("id, repo_id, node_count, edge_count, scanned_at").in("repo_id", repoRows.map((r) => r.id as string)).order("scanned_at", { ascending: false })
+    : { data: [] };
+  const list: RepoSummary[] = (repoRows ?? []).map((r) => ({
+    ...(r as unknown as Omit<RepoSummary, "graph_snapshots">),
+    graph_snapshots: (snapRows ?? []).filter((s) => s.repo_id === r.id).slice(0, 1) as unknown as RepoSummary["graph_snapshots"],
+  }));
+  const first = list[0];
+  const scanned = list.find((r) => r.graph_snapshots?.length);
+
+  let framework = false;
+  let scoped = false;
+  let exported = false;
+  if (scanned) {
+    const [{ data: policy }, { data: scopes }, { data: exports }] = await Promise.all([
+      db.from("repo_policies").select("config").eq("repo_id", scanned.id).maybeSingle(),
+      db.from("scopes").select("id").eq("repo_id", scanned.id).limit(1),
+      db.from("exports").select("id").eq("repo_id", scanned.id).limit(1),
+    ]);
+    framework = ((policy?.config as { frameworks?: string[] } | undefined)?.frameworks ?? []).length > 0;
+    scoped = (scopes ?? []).length > 0;
+    exported = (exports ?? []).length > 0;
+  }
+
+  const steps: Step[] = [
+    { title: "Install the GitHub App", body: "Read-only access to code, plus permission to post the pull request check.", done: (orgs ?? []).some((o) => o.github_installation_id), action: <ConnectGitHubButton variant="primary" /> },
+    { title: "Choose repositories", body: "Only the ones you pick are read.", done: list.length > 0, action: <SyncReposButton variant="primary" /> },
+    { title: "Run the first scan", body: "Takes about a minute. The code is cloned to a temporary folder and deleted afterwards; only the graph is kept.", done: Boolean(scanned), action: first ? <ScanButton repoId={first.id} local={local} label="Run first scan" variant="primary" /> : undefined },
+    { title: "Pick a framework", body: "PCI DSS, SOC 2 or DORA decides which requirement notes your export carries.", done: framework, action: scanned ? <Link className="btn" href={`/repos/${scanned.id}?tab=settings`}>Choose framework</Link> : undefined },
+    { title: "Define your scope", body: "Mark the boxes that hold regulated data. Pull requests that cross it get flagged.", done: scoped, action: scanned ? <Link className="btn" href={`/repos/${scanned.id}?tab=scopes`}>Edit scope</Link> : undefined },
+    { title: "Export your first pack", body: "A PDF with title block, sheets, vendor inventory and revision history.", done: exported, action: scanned ? <Link className="btn" href={`/repos/${scanned.id}?tab=export`}>Open export</Link> : undefined },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  const nextIndex = steps.findIndex((s) => !s.done);
 
   return (
-    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "40px 32px" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "32px" }}>
+    <div className="wrap page">
+      <div className="page-head">
         <div>
-          <p className="font-body" style={{ fontSize: "0.7rem", color: "#E8754A", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "6px", fontWeight: 500 }}>
-            Your workspace
-          </p>
-          <h1 className="font-display" style={{ fontSize: "1.8rem", fontWeight: 700, color: "#1A0F08", letterSpacing: "-0.02em" }}>
-            Repositories
-          </h1>
-          <p className="font-body" style={{ fontSize: "0.85rem", color: "rgba(26,15,8,0.4)", marginTop: "4px" }}>
-            {repos?.length ?? 0} selected · Only chosen repositories appear here
-          </p>
+          <p className="eyebrow">Workspace</p>
+          <h1>Repositories</h1>
+          <p>{list.length} {list.length === 1 ? "repository" : "repositories"} selected.</p>
         </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <SyncReposButton label="Choose repos" />
-          <ConnectGitHubButton label="Install GitHub App" />
+        <div className="row">
+          <SyncReposButton label="Choose repositories" />
+          <ConnectGitHubButton label="GitHub App settings" />
         </div>
       </div>
 
-      {repos && repos.length > 0 ? (
-        <RepoList repos={repos as unknown as RepoSummary[]} />
-      ) : (
-        <div style={{
-          border: "1.5px dashed rgba(26,15,8,0.12)",
-          borderRadius: "20px",
-          padding: "64px 32px",
-          textAlign: "center",
-          background: "rgba(255,255,255,0.5)",
-        }}>
-          <div style={{
-            width: "48px", height: "48px", borderRadius: "14px", margin: "0 auto 16px",
-            background: "rgba(232,117,74,0.08)", border: "1px solid rgba(232,117,74,0.18)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8754A" strokeWidth="1.5">
-              <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-            </svg>
-          </div>
-          <h2 className="font-display" style={{ fontSize: "1.1rem", fontWeight: 600, color: "#1A0F08", marginBottom: "8px", letterSpacing: "-0.01em" }}>
-            No maps generated yet
-          </h2>
-          <p className="font-body" style={{ fontSize: "0.875rem", color: "rgba(26,15,8,0.4)", marginBottom: "24px", maxWidth: "320px", margin: "0 auto 24px", lineHeight: 1.6, fontWeight: 300 }}>
-            Install the GitHub App, then choose which repositories belong in this workspace.
-          </p>
-          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-            <SyncReposButton label="Choose repos" />
-            <ConnectGitHubButton label="Install GitHub App" />
-          </div>
-        </div>
-      )}
+      <div className="stack">
+        {list.length > 0 ? <RepoList repos={list} local={local} /> : null}
+
+        {doneCount < steps.length ? (
+          <section className="panel" aria-labelledby="setup-title">
+            <div className="panel-head">
+              <h2 id="setup-title" style={{ fontSize: "var(--step-1)" }}>Setup</h2>
+              <Stamp tone="plain">{doneCount} of {steps.length} done</Stamp>
+            </div>
+            <ol className="timeline" style={{ padding: "0 14px" }}>
+              {steps.map((s, i) => (
+                <li key={s.title} aria-current={i === nextIndex ? "step" : undefined}>
+                  <div className="rev">{s.done ? "Done" : `Step ${i + 1}`}</div>
+                  <div className="stack" style={{ gap: 6 }}>
+                    <strong>{s.title}</strong>
+                    <span className="muted">{s.body}</span>
+                    {i === nextIndex && s.action ? <div>{s.action}</div> : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+
+        <p className="muted">
+          Want to see the finished result first? <Link href="/demo">Open the sample workspace</Link>. It needs no sign-in and uses made-up data.
+        </p>
+      </div>
     </div>
   );
 }

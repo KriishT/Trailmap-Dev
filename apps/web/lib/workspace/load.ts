@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyOverrides, diffGraphs, edgeKey, parseStoredGraph, type DependencyGraph, type Override } from "@trailmap/graph";
 import { VENDORS } from "@trailmap/scanner";
 import { loadComplianceContext } from "@trailmap/pipeline/context";
-import { revisionLabel, type AttestationView, type DriftView, type ExportView, type OverrideView, type RevisionInfo, type WorkspaceData } from "./types";
+import { revisionLabel, type ShareView, type AttestationView, type DriftView, type ExportView, type OverrideView, type RevisionInfo, type WorkspaceData } from "./types";
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
@@ -112,11 +112,17 @@ export async function loadWorkspace(db: SupabaseClient, repoId: string, opts: Lo
     db.from("repo_policies").select("config").eq("repo_id", repoId).maybeSingle(),
     db.from("scan_logs").select("id, status").eq("repo_id", repoId).in("status", ["pending", "running"]).eq("kind", "scan").order("created_at", { ascending: false }).limit(1),
   ]);
+  const snapshotIds = graphs.map((g) => g.row.id as string);
+  const { data: shareRows } = await db
+    .from("shared_maps")
+    .select("slug, snapshot_id, label, expires_at, revoked_at, created_at")
+    .in("snapshot_id", snapshotIds)
+    .order("created_at", { ascending: false });
   const { data: canAdmin } = await db.rpc("can_admin_repo", { p_repo: repoId });
 
   const cfg = (policyRow?.config ?? {}) as { frameworks?: string[]; on_drift?: "neutral" | "failure" };
   return {
-    repo: { id: repo.id as string, fullName: repo.full_name as string, defaultBranch: repo.default_branch as string },
+    repo: { id: repo.id as string, orgId: repo.org_id as string, fullName: repo.full_name as string, defaultBranch: repo.default_branch as string },
     demo: false,
     revisions,
     selectedId: selected.row.id as string,
@@ -138,6 +144,10 @@ export async function loadWorkspace(db: SupabaseClient, repoId: string, opts: Lo
       acknowledgedBy: (d.acknowledged_by as string | null) ?? null, createdAt: d.created_at as string,
     })),
     exports: (exportRows ?? []).map((e): ExportView => ({ id: e.id as string, framework: e.framework as string, format: e.format as string, graphHash: e.graph_hash as string, fileHash: e.file_hash as string, periodStart: (e.period_start as string | null) ?? null, periodEnd: (e.period_end as string | null) ?? null, createdAt: e.created_at as string })),
+    shares: (shareRows ?? []).map((r): ShareView => ({
+      slug: r.slug as string, snapshotId: r.snapshot_id as string, label: (r.label as string | null) ?? null,
+      expiresAt: (r.expires_at as string | null) ?? null, revokedAt: (r.revoked_at as string | null) ?? null, createdAt: r.created_at as string,
+    })),
     policy: { frameworks: cfg.frameworks ?? [], onDrift: cfg.on_drift ?? "neutral" },
     permissions: { canAdmin: canAdmin === true },
     activeScan: activeRows?.[0] ? { id: activeRows[0].id as string, status: activeRows[0].status as string } : null,

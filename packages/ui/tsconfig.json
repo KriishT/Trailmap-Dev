@@ -1,7 +1,12 @@
 {
   "extends": "@trailmap/typescript-config/base.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "declaration": false,
+    "declarationMap": false,
     "strictNullChecks": true
   },
   "include": ["src"],

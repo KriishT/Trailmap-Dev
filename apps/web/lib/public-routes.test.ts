@@ -3,7 +3,7 @@ import { isPublic } from "./public-routes";
 
 describe("isPublic", () => {
   it("allows the landing page, auth pages, shared maps and webhooks", () => {
-    for (const p of ["/", "/sign-in", "/sign-up", "/auth/callback", "/map/abc123", "/api/webhooks/github"]) {
+    for (const p of ["/", "/sign-in", "/sign-up", "/auth/callback", "/map/abc123", "/api/webhooks/github", "/demo", "/api/demo/scene", "/api/demo/export"]) {
       expect(isPublic(p), p).toBe(true);
     }
   });

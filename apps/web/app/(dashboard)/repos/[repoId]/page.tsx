@@ -1,87 +1,37 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { EmptyState } from "@trailmap/ui";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { ShareButton } from "@/components/map/share-button";
-import { RepoWorkspace } from "@/components/map/repo-workspace";
-import { ArrowLeft } from "lucide-react";
-import { selectDiffBaseline, type ComparableSnapshot } from "@/lib/graph-diff";
-import { readSnapshotGraph } from "@/lib/graph-read";
+import { isLocalMode } from "@/lib/local-mode";
+import { isUuid } from "@/lib/authz";
+import { loadWorkspace } from "@/lib/workspace/load";
+import { toClientWorkspace } from "@/lib/workspace/client-data";
+import { Workspace } from "@/components/workspace/workspace";
+import { ScanButton } from "@/components/dashboard/scan-button";
 
-export default async function RepoMapPage({ params }: { params: Promise<{ repoId: string }> }) {
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Workspace" };
+
+export default async function RepoWorkspacePage({ params, searchParams }: { params: Promise<{ repoId: string }>; searchParams: Promise<{ rev?: string; asOf?: string; tab?: string }> }) {
   const { repoId } = await params;
-  // User-scoped client: row-level security limits this to repos in the user's orgs.
+  const { rev, asOf, tab } = await searchParams;
+  if (!isUuid(repoId)) notFound();
+
+  // The signed-in person's client: row-level security decides whether this repository exists for them.
   const db = await createSupabaseServerClient();
-
-  const { data: repo } = await db
-    .from("repos")
-    .select("id, name, full_name, last_scanned_at")
-    .eq("id", repoId)
-    .single();
-
-  if (!repo) notFound();
-
-  const { data: snapshot } = await db
-    .from("graph_snapshots")
-    .select("id, raw_json, node_count, edge_count, scanned_at, commit_sha")
-    .eq("repo_id", repoId)
-    .order("scanned_at", { ascending: false })
-    .limit(12);
-
-  const currentSnapshot = snapshot?.[0];
-  const previousSnapshot = selectDiffBaseline((snapshot ?? []) as ComparableSnapshot[]);
-  const currentGraph = currentSnapshot ? readSnapshotGraph(currentSnapshot.raw_json) : null;
-  const previousGraph = previousSnapshot ? readSnapshotGraph(previousSnapshot.raw_json) : null;
-
-  if (!currentSnapshot || !currentGraph) {
+  const data = await loadWorkspace(db, repoId, { rev: rev ?? null, asOf: asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : null });
+  if (!data) {
+    const { data: repo } = await db.from("repos").select("id, full_name").eq("id", repoId).maybeSingle();
+    if (!repo) notFound();
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
-        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "rgba(232,117,74,0.08)", border: "1px solid rgba(232,117,74,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8754A" strokeWidth="1.5">
-            <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-          </svg>
-        </div>
-        <p className="font-body" style={{ fontSize: "0.875rem", color: "rgba(26,15,8,0.4)" }}>No scan yet — trigger one from the dashboard.</p>
-        <Link href="/dashboard" className="btn-outline" style={{ fontSize: "0.8rem", padding: "8px 16px", textDecoration: "none" }}>Back to dashboard</Link>
+      <div className="wrap page">
+        <p><Link href="/dashboard">Repositories</Link></p>
+        <h1 className="mono" style={{ margin: "12px 0" }}>{repo.full_name as string}</h1>
+        <EmptyState title="No scan yet" action={<ScanButton repoId={repoId} local={isLocalMode()} label="Run first scan" variant="primary" />}>
+          Trailmap has not read this repository yet. The first scan takes about a minute. The code is cloned to a temporary folder and deleted afterwards; only the graph is kept.
+        </EmptyState>
       </div>
     );
   }
-
-  const snapshotMeta = currentSnapshot;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", background: "#FAF8F5" }}>
-      {/* Toolbar */}
-      <div style={{
-        padding: "0 20px", height: "44px",
-        display: "flex", alignItems: "center", gap: "12px",
-        borderBottom: "1px solid rgba(26,15,8,0.07)",
-        background: "rgba(250,248,245,0.95)",
-        backdropFilter: "blur(12px)",
-        flexShrink: 0,
-      }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "4px", color: "rgba(26,15,8,0.4)", textDecoration: "none", fontSize: "0.8rem" }}>
-          <ArrowLeft size={13} /> Repos
-        </Link>
-        <div style={{ width: "1px", height: "14px", background: "rgba(26,15,8,0.1)" }} />
-        <span className="font-body" style={{ fontSize: "0.875rem", fontWeight: 500, color: "#1A0F08" }}>{repo.full_name}</span>
-        <div style={{ width: "1px", height: "14px", background: "rgba(26,15,8,0.1)" }} />
-        <span className="font-body" style={{ fontSize: "0.75rem", color: "rgba(26,15,8,0.4)" }}>
-          <span style={{ color: "#E8754A" }}>{snapshotMeta.node_count}</span> services ·{" "}
-          <span style={{ color: "#E8754A" }}>{snapshotMeta.edge_count}</span> edges
-          {snapshotMeta.commit_sha && <span style={{ marginLeft: "8px", fontFamily: "monospace", fontSize: "0.7rem", color: "rgba(26,15,8,0.25)" }}>{snapshotMeta.commit_sha.slice(0, 7)}</span>}
-        </span>
-        <div style={{ marginLeft: "auto" }}>
-          <ShareButton snapshotId={snapshotMeta.id} />
-        </div>
-      </div>
-
-      <RepoWorkspace
-        repoId={repo.id}
-        graph={currentGraph}
-        scannedAt={currentSnapshot.scanned_at}
-        previousGraph={previousGraph ?? undefined}
-        previousScannedAt={previousSnapshot?.scanned_at}
-      />
-    </div>
-  );
+  return <Workspace data={toClientWorkspace(data)} initialTab={tab ?? "system"} />;
 }

@@ -54,8 +54,17 @@ export interface OverrideView {
   createdAt: string;
 }
 
+export interface ShareView {
+  slug: string;
+  snapshotId: string;
+  label: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
 export interface WorkspaceData {
-  repo: { id: string; fullName: string; defaultBranch: string };
+  repo: { id: string; orgId: string | null; fullName: string; defaultBranch: string };
   /** True for the public sample repository, which lives in the browser and is not saved. */
   demo: boolean;
   revisions: RevisionInfo[];
@@ -74,6 +83,7 @@ export interface WorkspaceData {
   attestations: AttestationView[];
   drift: DriftView[];
   exports: ExportView[];
+  shares: ShareView[];
   policy: { frameworks: string[]; onDrift: "neutral" | "failure" };
   permissions: { canAdmin: boolean };
   /** Scans that are queued or running, for live progress. */

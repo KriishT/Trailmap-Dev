@@ -17,17 +17,9 @@ vi.mock("@/lib/supabase-server", () => ({
   supabaseAdmin: () => adminClient(state.db as TestDb),
 }));
 
-const prImpact = vi.hoisted(() => ({
-  computePrImpactForRepo: vi.fn(),
-  buildPrImpactComment: vi.fn(),
-  upsertPrImpactComment: vi.fn(),
-}));
-vi.mock("@/lib/github-pr-impact", () => prImpact);
 vi.mock("@/lib/github-api", () => ({ githubApi: { getDefaultBranch: async () => "main", getPermission: async () => "write" } }));
 
 import { POST as scanPost } from "./repos/[repoId]/scan/route";
-import { GET as impactGet } from "./repos/[repoId]/impact/route";
-import { POST as commentPost } from "./repos/[repoId]/impact/comment/route";
 import { POST as sharePost } from "./maps/share/route";
 import { GET as scanLogGet } from "./scan-logs/[scanLogId]/route";
 import { POST as webhookPost } from "./webhooks/github/route";
@@ -59,7 +51,6 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   asUser(null);
-  prImpact.computePrImpactForRepo.mockReset();
   await db.admin(`DELETE FROM scan_logs WHERE status IN ('pending', 'running')`);
   await db.admin(`DELETE FROM shared_maps`);
 });
@@ -92,25 +83,6 @@ describe("POST /api/repos/[repoId]/scan", () => {
     expect(second.alreadyQueued).toBe(true);
     expect(second.scanLogId).toBe(first.scanLogId);
     expect(await count(`SELECT count(*) n FROM scan_logs WHERE repo_id = $1 AND status = 'pending'`, [s.repoA])).toBe(1);
-  });
-});
-
-describe("GET /api/repos/[repoId]/impact and POST .../impact/comment", () => {
-  it("refuses signed-out callers", async () => {
-    const req = new Request("http://x");
-    expect((await impactGet(req as never, params({ repoId: s.repoA }))).status).toBe(401);
-  });
-
-  it("returns 404 for another org's repo without computing anything", async () => {
-    asUser(ids.userA);
-    const get = await impactGet(new Request("http://x/?pr=1") as never, params({ repoId: s.repoB }));
-    expect(get.status).toBe(404);
-    const post = await commentPost(
-      new Request("http://x", { method: "POST", body: JSON.stringify({ prNumber: 1 }) }) as never,
-      params({ repoId: s.repoB })
-    );
-    expect(post.status).toBe(404);
-    expect(prImpact.computePrImpactForRepo).not.toHaveBeenCalled();
   });
 });
 

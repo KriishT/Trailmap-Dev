@@ -1,20 +1,25 @@
 {
   "name": "@trailmap/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
-    "lint": "echo 'skip'",
-    "check-types": "echo 'skip'"
-  },
-  "devDependencies": {
-    "@trailmap/typescript-config": "*",
-    "@types/react": "19.2.2",
-    "typescript": "5.9.2"
+    "lint": "eslint --max-warnings 0",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.2.0"
+    "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-tooltip": "^1.2.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@trailmap/eslint-config": "*",
+    "@trailmap/typescript-config": "*",
+    "@types/react": "^19.0.0",
+    "typescript": "5.9.2"
   }
 }

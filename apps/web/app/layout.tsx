@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { ReactQueryProvider } from "@/components/providers/react-query-provider";
-import { PageTransition } from "@/components/providers/page-transition";
 import "./globals.css";
 
 const plexSans = localFont({
@@ -16,7 +14,7 @@ const plexSans = localFont({
 });
 
 const plexMono = localFont({
-  variable: "--font-mono",
+  variable: "--font-mono-face",
   display: "swap",
   src: [
     { path: "./fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400" },
@@ -34,17 +32,23 @@ const plexCondensed = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Trailmap — Living Architecture Maps",
-  description: "Auto-generated, always-current architecture maps for your codebase",
+  title: { default: "Trailmap Evidence: architecture evidence from your code", template: "%s | Trailmap Evidence" },
+  description:
+    "Trailmap reads your repositories and draws the system, data-flow and network diagrams that PCI DSS, SOC 2 and DORA reviews ask for, with the code behind every line, and checks pull requests for drift.",
 };
+
+// Sets the saved theme before first paint so there is no flash. Falls back to the system setting.
+const THEME_SCRIPT = `try{var t=localStorage.getItem("trailmap-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${plexCondensed.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
-        <ReactQueryProvider>
-          <PageTransition>{children}</PageTransition>
-        </ReactQueryProvider>
+        <a className="skip-link" href="#main">Skip to content</a>
+        {children}
       </body>
     </html>
   );
