@@ -127,6 +127,15 @@ describe("immutability", () => {
   });
 });
 
+describe("attestations and their parents", () => {
+  it("are removed together with their repository (foreign-key actions are allowed)", async () => {
+    const repo = (await db.admin<{ id: string }>(`INSERT INTO repos (org_id, github_repo_id, name, full_name) VALUES ($1, 77, 'tmp', 'org-a/tmp') RETURNING id`, [s.orgA]))[0]!.id;
+    await db.admin(`INSERT INTO attestations (repo_id, kind, graph_hash, actor_label) VALUES ($1, 'snapshot_review', 'h', 'x')`, [repo]);
+    await db.admin(`DELETE FROM repos WHERE id = $1`, [repo]);
+    expect(await count(`SELECT count(*) n FROM attestations WHERE repo_id = $1`, [repo])).toBe(0);
+  });
+});
+
 describe("audit_events is append-only", () => {
   it("rejects UPDATE, DELETE and TRUNCATE for every role, including the superuser", async () => {
     await expect(db.admin(`UPDATE audit_events SET action = 'x'`)).rejects.toThrow(/append-only/);

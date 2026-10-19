@@ -7,7 +7,7 @@ import type { Role, TestDb } from "./db";
  * rpc(), and auth.getUser().
  */
 
-type Filter = { col: string; op: "=" | "in" | "not in" | "is" | "<"; val: unknown };
+type Filter = { col: string; op: "=" | "in" | "not in" | "is" | "<" | "@>"; val: unknown };
 type Result = { data: unknown; error: { message: string } | null };
 
 class Query implements PromiseLike<Result> {
@@ -55,6 +55,10 @@ class Query implements PromiseLike<Result> {
     this.filters.push({ col, op: "in", val });
     return this;
   }
+  contains(col: string, val: unknown) {
+    this.filters.push({ col, op: "@>", val: JSON.stringify(val) });
+    return this;
+  }
   lt(col: string, val: unknown) {
     this.filters.push({ col, op: "<", val });
     return this;
@@ -100,6 +104,10 @@ class Query implements PromiseLike<Result> {
         return `"${f.col}" = $${params.length}`;
       }
       if (f.op === "is") return `"${f.col}" IS NULL`;
+      if (f.op === "@>") {
+        params.push(f.val);
+        return `"${f.col}" @> $${params.length}::jsonb`;
+      }
       if (f.op === "<") {
         params.push(f.val);
         return `"${f.col}" < $${params.length}`;
@@ -115,6 +123,8 @@ class Query implements PromiseLike<Result> {
 
   private build(): { sql: string; params: unknown[] } {
     const params: unknown[] = [];
+    // supabase-js sends objects and arrays in a payload as JSON.
+    const jsonable = (v: unknown) => (v !== null && typeof v === "object" && !(v instanceof Date) ? JSON.stringify(v) : v);
     const keys = Object.keys(this.payload);
 
     if (this.mode === "select") {
@@ -126,7 +136,7 @@ class Query implements PromiseLike<Result> {
 
     if (this.mode === "update") {
       const sets = keys.map((k) => {
-        params.push(this.payload[k]);
+        params.push(jsonable(this.payload[k]));
         return `"${k}" = $${params.length}`;
       });
       const where = this.whereSql(params);
@@ -134,7 +144,7 @@ class Query implements PromiseLike<Result> {
     }
 
     const placeholders = keys.map((k) => {
-      params.push(this.payload[k]);
+      params.push(jsonable(this.payload[k]));
       return `$${params.length}`;
     });
     let sql = `INSERT INTO ${this.table} (${keys.map((k) => `"${k}"`).join(", ")}) VALUES (${placeholders.join(", ")})`;
@@ -194,7 +204,10 @@ export class PgClient {
     try {
       const names = Object.keys(args);
       const sql = `SELECT * FROM ${fn}(${names.map((n, i) => `${n} => $${i + 1}`).join(", ")})`;
-      const rows = await this.db.as(this.role, this.userId, sql, names.map((n) => args[n]));
+      const rows = await this.db.as<Record<string, unknown>>(this.role, this.userId, sql, names.map((n) => args[n]));
+      // supabase-js returns the bare value for a function that returns a single scalar.
+      const only = rows.length === 1 ? Object.keys(rows[0]!) : [];
+      if (only.length === 1 && only[0] === fn) return { data: rows[0]![fn], error: null };
       return { data: rows, error: null };
     } catch (err) {
       return { data: null, error: { message: err instanceof Error ? err.message : String(err) } };
@@ -202,9 +215,11 @@ export class PgClient {
   }
 
   auth = {
-    getUser: async () => ({
-      data: { user: this.userId ? { id: this.userId, user_metadata: {} } : null },
-    }),
+    getUser: async () => {
+      if (!this.userId) return { data: { user: null } };
+      const rows = await this.db.admin<{ email: string }>(`SELECT email FROM auth.users WHERE id = $1`, [this.userId]);
+      return { data: { user: { id: this.userId, email: rows[0]?.email, user_metadata: {} } } };
+    },
   };
 }
 

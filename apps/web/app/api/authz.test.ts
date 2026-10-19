@@ -23,7 +23,7 @@ const prImpact = vi.hoisted(() => ({
   upsertPrImpactComment: vi.fn(),
 }));
 vi.mock("@/lib/github-pr-impact", () => prImpact);
-vi.mock("@/lib/github-api", () => ({ githubApi: { getDefaultBranch: async () => "main" } }));
+vi.mock("@/lib/github-api", () => ({ githubApi: { getDefaultBranch: async () => "main", getPermission: async () => "write" } }));
 
 import { POST as scanPost } from "./repos/[repoId]/scan/route";
 import { GET as impactGet } from "./repos/[repoId]/impact/route";

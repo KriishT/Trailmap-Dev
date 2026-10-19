@@ -1,0 +1,16 @@
+{
+  "ref": "refs/heads/main",
+  "repository": {
+    "id": 10,
+    "full_name": "org-a/a",
+    "name": "a",
+    "private": true,
+    "default_branch": "main"
+  },
+  "installation": {
+    "id": 4242
+  },
+  "head_commit": {
+    "id": "abc123"
+  }
+}

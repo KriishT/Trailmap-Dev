@@ -1,0 +1,9 @@
+{
+  "action": "created",
+  "installation": {
+    "id": 5555,
+    "account": {
+      "id": 2
+    }
+  }
+}

@@ -19,6 +19,7 @@ function buildDeps(): PipelineDeps {
     cloner: defaultCloner,
     tempDir: defaultTempDir,
     scan,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
   };
 }
 
@@ -31,9 +32,10 @@ async function tick() {
       const outcome = await processNextJob(buildDeps());
       if (outcome.status === "idle") break;
       if (outcome.status === "completed") {
-        console.log(`[worker] scan ${outcome.scanLogId} completed (snapshot ${outcome.snapshotId})`);
+        const what = "snapshotId" in outcome ? `snapshot ${outcome.snapshotId}` : `check ${outcome.conclusion}`;
+        console.log(`[worker] job ${outcome.scanLogId} completed (${what})`);
       } else {
-        console.error(`[worker] scan ${outcome.scanLogId} failed: ${outcome.error}`);
+        console.error(`[worker] job ${outcome.scanLogId} failed: ${outcome.error}`);
       }
     }
   } catch (err) {

@@ -1,0 +1,15 @@
+{
+  "action": "removed",
+  "installation": {
+    "id": 4242
+  },
+  "repositories_added": [],
+  "repositories_removed": [
+    {
+      "id": 11,
+      "name": "newrepo",
+      "full_name": "org-a/newrepo",
+      "private": false
+    }
+  ]
+}

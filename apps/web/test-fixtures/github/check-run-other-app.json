@@ -1,0 +1,21 @@
+{
+  "action": "rerequested",
+  "check_run": {
+    "name": "Some other check",
+    "pull_requests": [
+      {
+        "number": 7
+      }
+    ]
+  },
+  "repository": {
+    "id": 10,
+    "full_name": "org-a/a",
+    "name": "a",
+    "private": true,
+    "default_branch": "main"
+  },
+  "installation": {
+    "id": 4242
+  }
+}

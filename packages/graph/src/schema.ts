@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { computeGraphHash } from "./hash.js";
 
 /** Bump when the stored graph shape changes in a way readers must handle. */
 export const GRAPH_SCHEMA_VERSION = 2;
@@ -201,7 +202,10 @@ function validate(input: unknown, context: "write" | "read"): DependencyGraph {
 /** Validate a graph about to be persisted and stamp the current schema version. */
 export function prepareGraphForWrite(input: unknown): DependencyGraph {
   const graph = validate(input, "write");
-  return { ...graph, meta: { ...graph.meta, graphSchemaVersion: GRAPH_SCHEMA_VERSION } };
+  const stamped: DependencyGraph = { ...graph, meta: { ...graph.meta, graphSchemaVersion: GRAPH_SCHEMA_VERSION } };
+  // Never trust a supplied hash: recompute it from the content that will be stored.
+  stamped.meta.graphHash = computeGraphHash(stamped);
+  return stamped;
 }
 
 /** Validate a graph loaded from storage (including legacy unversioned snapshots). */

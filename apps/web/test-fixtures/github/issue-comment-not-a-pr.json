@@ -1,0 +1,23 @@
+{
+  "action": "created",
+  "issue": {
+    "number": 7
+  },
+  "comment": {
+    "body": "/trailmap ack",
+    "user": {
+      "login": "kay",
+      "type": "User"
+    }
+  },
+  "repository": {
+    "id": 10,
+    "full_name": "org-a/a",
+    "name": "a",
+    "private": true,
+    "default_branch": "main"
+  },
+  "installation": {
+    "id": 4242
+  }
+}

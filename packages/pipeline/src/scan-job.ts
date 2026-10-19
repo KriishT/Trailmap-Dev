@@ -1,5 +1,6 @@
 import { prepareGraphForWrite } from "@trailmap/graph";
 import type { PipelineDeps, ScanJob, JobOutcome } from "./types.js";
+import { runPrCheck, runPrRecheck } from "./pr-check.js";
 
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
@@ -12,7 +13,12 @@ export async function claimNextJob(db: PipelineDeps["db"]): Promise<ScanJob | nu
   if (error) throw new Error(`claim_scan_job failed: ${error.message}`);
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return null;
-  return { scanLogId: row.id as string, repoId: row.repo_id as string };
+  return {
+    scanLogId: row.id as string,
+    repoId: row.repo_id as string,
+    kind: (row.kind as ScanJob["kind"]) ?? "scan",
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  };
 }
 
 /** Fail jobs whose worker died mid-scan so they do not look "running" forever. */
@@ -35,6 +41,8 @@ export async function processNextJob(deps: PipelineDeps): Promise<JobOutcome> {
   await failStaleJobs(deps);
   const job = await claimNextJob(deps.db);
   if (!job) return { status: "idle" };
+  if (job.kind === "pr_check") return runPrCheck(job, deps);
+  if (job.kind === "pr_recheck") return runPrRecheck(job, deps);
   return runScanJob(job, deps);
 }
 

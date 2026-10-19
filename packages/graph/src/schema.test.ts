@@ -32,6 +32,15 @@ describe("graph schema", () => {
     expect(prepareGraphForWrite(graph()).meta.graphSchemaVersion).toBe(GRAPH_SCHEMA_VERSION);
   });
 
+  it("computes the content hash on write and ignores a supplied one", () => {
+    const g = graph();
+    (g.meta as Record<string, unknown>).graphHash = "x".repeat(64);
+    const out = prepareGraphForWrite(g);
+    expect(out.meta.graphHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(out.meta.graphHash).not.toBe("x".repeat(64));
+    expect(prepareGraphForWrite(graph()).meta.graphHash).toBe(prepareGraphForWrite(graph()).meta.graphHash);
+  });
+
   it("reads legacy snapshots that have no version", () => {
     expect(parseStoredGraph(graph()).nodes).toHaveLength(2);
   });

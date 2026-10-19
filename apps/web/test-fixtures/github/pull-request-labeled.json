@@ -1,0 +1,26 @@
+{
+  "action": "labeled",
+  "number": 7,
+  "pull_request": {
+    "number": 7,
+    "title": "Add Stripe",
+    "draft": false,
+    "head": {
+      "sha": "headsha1",
+      "ref": "feature"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "repository": {
+    "id": 10,
+    "full_name": "org-a/a",
+    "name": "a",
+    "private": true,
+    "default_branch": "main"
+  },
+  "installation": {
+    "id": 4242
+  }
+}

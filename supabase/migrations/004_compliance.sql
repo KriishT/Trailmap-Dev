@@ -107,10 +107,16 @@ CREATE TABLE drift_events (
   findings JSONB NOT NULL DEFAULT '[]',
   ignored JSONB NOT NULL DEFAULT '[]',
   fingerprint TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  -- Blast radius / owners for the PR, kept so the comment can be re-rendered without re-scanning.
+  impact JSONB NOT NULL DEFAULT '{}',
+  policy_errors JSONB NOT NULL DEFAULT '[]',
   conclusion TEXT NOT NULL CHECK (conclusion IN ('success', 'neutral', 'failure')),
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acknowledged')),
   check_run_id BIGINT,
   comment_id BIGINT,
+  acknowledged_by TEXT,
+  acknowledged_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (repo_id, pr_number, head_sha)
@@ -232,7 +238,17 @@ CREATE TRIGGER scope_members_audit AFTER INSERT ON scope_members FOR EACH ROW EX
 CREATE TRIGGER graph_overrides_audit AFTER INSERT OR UPDATE ON graph_overrides FOR EACH ROW EXECUTE FUNCTION audit_row_change();
 CREATE TRIGGER attestations_audit AFTER INSERT ON attestations FOR EACH ROW EXECUTE FUNCTION audit_row_change();
 -- An attestation is a signed-off statement; it can be superseded by a new one but never edited or removed.
-CREATE TRIGGER attestations_immutable BEFORE UPDATE OR DELETE ON attestations FOR EACH ROW EXECUTE FUNCTION reject_audit_mutation();
+-- Foreign-key actions (ON DELETE CASCADE / SET NULL, for example when a repo is deleted) run at
+-- trigger depth 2 or more; a direct UPDATE or DELETE runs at depth 1 and is refused.
+CREATE OR REPLACE FUNCTION reject_attestation_mutation() RETURNS TRIGGER AS $$
+BEGIN
+  IF pg_trigger_depth() > 1 THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+  RAISE EXCEPTION 'attestations is append-only (% rejected)', TG_OP USING ERRCODE = 'integrity_constraint_violation';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER attestations_immutable BEFORE UPDATE OR DELETE ON attestations FOR EACH ROW EXECUTE FUNCTION reject_attestation_mutation();
 CREATE TRIGGER vendors_audit AFTER INSERT OR UPDATE ON vendors FOR EACH ROW EXECUTE FUNCTION audit_row_change();
 
 -- ---------------------------------------------------------------------------------------
